@@ -11,7 +11,7 @@ done
 [[ -n "$cook_python" ]] || { echo '需要Python3.11或更新版本，尚未修改现有服务'; exit 1; }
 command -v docker >/dev/null
 # Do not bind a public address or silently take another service's port.
-"$cook_python" - <<'PY' 
+"$cook_python" - <<'PY'
 import socket
 address='172.19.0.1'
 try:
