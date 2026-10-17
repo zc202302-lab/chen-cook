@@ -11,4 +11,5 @@
 - 验证：初始功能提交11c5daf950dbcf987a28e6588873e267f1754893的GitHub CI39015800203/job117347534601全部success，含320/390/768/1440真实登录/阅读/目录网页编辑/继续阅读/退出验收。本地原7项测试通过；后补目录JSON网页导入及CSRF/原子失败保护测试后8项通过，最新功能head04bf866085d33c96400b7b0162fa25270d4c1fd6的CI39016038873/job117348301585全部success，8项单元/迁移测试、Python/JS/Shell检查和320/390/768/1440真实浏览器全部通过。真实服务器systemd/Caddy联调与失败回退尚未执行，不能用脚本语法检查冒充生产验收。
 - 目录：网页编辑器现支持上传之前保存的47项目录JSON，无需服务器上传或终端粘贴目录；目录内容仍不进入公开仓库。
 - 下一步：用户在青岛以root克隆本仓库至/opt/chen-cook并执行scripts/bootstrap.sh完成一次首装，核验cook域名HTTPS、独立登录和样书阅读。
-\n- GitHub代码已完成，生产仍未上线：无直接SSH，未读取或索要用户密码/AccessKey；DNS的cook A记录应指向47.104.233.200，用户是否已设置未知。安装成功后必须同时核对公网HTTPS health的service=chen-cook、revision、登录和样书原页，才可更新部署完成状态。\n
+
+- GitHub代码已完成，生产仍未上线：无直接SSH，未读取或索要用户密码/AccessKey；DNS的cook A记录应指向47.104.233.200，用户是否已设置未知。安装成功后必须同时核对公网HTTPS health的service=chen-cook、revision、登录和样书原页，才可更新部署完成状态。
