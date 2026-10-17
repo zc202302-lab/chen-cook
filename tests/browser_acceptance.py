@@ -1,11 +1,14 @@
 """Real standalone login, directory editing and desktop/mobile reader."""
 import os
+import io
 from pathlib import Path
 import socket
 import sys
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
+from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import fitz
 import uvicorn
@@ -48,6 +51,14 @@ with tempfile.TemporaryDirectory() as tmp:
             leaf.insert_textbox(fitz.Rect(30,210,565,750),('Method 1: add 150 grams. Keep the original quantity unchanged. Read the next step carefully. '*12),fontsize=13)
         doc.set_toc([[1,'P8 测试章节',2]]);doc.save(source)
     book,_=import_pdf(source,'magazines/test.pdf','测试样刊',reading_only=True)
+    original=source.read_bytes()
+    class SourceBucket:
+        def head_object(self,key):return SimpleNamespace(content_length=len(original),etag='browser-fixture',last_modified=1700000000)
+        def get_object(self,key,byte_range=None,headers=None):
+            start,end=byte_range if byte_range else (0,len(original)-1)
+            return io.BytesIO(original[start:end+1])
+    mocks=[patch('cooklib.oss.bucket_client',return_value=SourceBucket()),patch('cooklib.oss.configured',return_value=True)]
+    for mock in mocks:mock.start()
     from cooklib.web import create_app
     with socket.socket() as probe:probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
     server=uvicorn.Server(uvicorn.Config(create_app(),host='127.0.0.1',port=port,log_level='error'))
@@ -69,7 +80,17 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.get_by_role('button',name='登录',exact=True).click()
                 page.wait_for_url(f'http://127.0.0.1:{port}/')
                 page.get_by_role('link',name='测试样刊',exact=True).click()
-                page.get_by_role('link',name='P8 测试章节 PDF 2',exact=True).click()
+                assert page.get_by_role('link',name='开始阅读',exact=True).get_attribute('href')==f'/books/{book}/source.pdf'
+                assert page.get_by_role('link',name='P8 测试章节 PDF 2',exact=True).get_attribute('href')==f'/books/{book}/source.pdf#page=2'
+                head=page.request.head(f'http://127.0.0.1:{port}/books/{book}/source.pdf')
+                assert head.status==200 and int(head.headers['content-length'])==len(original)
+                chunk=page.request.get(f'http://127.0.0.1:{port}/books/{book}/source.pdf',headers={'Range':'bytes=0-4'})
+                assert chunk.status==206 and chunk.body()==b'%PDF-'
+                full=page.request.get(f'http://127.0.0.1:{port}/books/{book}/source.pdf')
+                assert full.body()==original and full.headers['content-type']=='application/pdf'
+                # Keep the previous readers covered as legacy routes, independent
+                # of browser-owned native PDF viewer UI (not exposed in headless).
+                page.goto(f'http://127.0.0.1:{port}/books/{book}/pages/2')
                 page.wait_for_url('**/pages/2')
                 reading_layout(page,width)
                 Path('artifacts').mkdir(exist_ok=True)
@@ -104,21 +125,23 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.get_by_label('页码',exact=True).fill('3');page.get_by_role('button',name='前往',exact=True).click()
                 page.wait_for_url('**/pages/3');page.reload()
                 page.get_by_role('link',name='返回书刊详情').click()
-                page.get_by_role('link',name='继续阅读',exact=True).click();page.wait_for_url('**/pages/3')
+                assert page.get_by_role('link',name='从上次页码打开',exact=True).get_attribute('href')==f'/books/{book}/source.pdf#page=3'
+                page.goto(f'http://127.0.0.1:{port}/books/{book}/pages/3');page.wait_for_url('**/pages/3')
                 page.get_by_role('link',name='返回书刊详情').click()
                 page.get_by_role('link',name='编辑目录',exact=True).click()
                 page.get_by_label('章节名称').fill('网页修改目录')
                 page.get_by_label('实际PDF页码').fill('1')
                 page.get_by_role('button',name='保存目录',exact=True).click()
                 assert page.get_by_role('link',name='网页修改目录 PDF 1',exact=True).is_visible()
-                page.get_by_role('link',name='网页修改目录 PDF 1',exact=True).click()
+                assert page.get_by_role('link',name='网页修改目录 PDF 1',exact=True).get_attribute('href')==f'/books/{book}/source.pdf#page=1'
+                page.goto(f'http://127.0.0.1:{port}/books/{book}/pages/1')
                 assert page.get_by_text('已是首页',exact=True).is_visible()
                 page.keyboard.press('ArrowRight');page.wait_for_url('**/pages/2')
                 page.get_by_role('link',name='返回书刊详情').click()
                 page.get_by_role('link',name='编辑目录',exact=True).click()
                 page.get_by_label('章节名称').fill('P8 测试章节');page.get_by_label('实际PDF页码').fill('2')
                 page.get_by_role('button',name='保存目录',exact=True).click()
-                page.get_by_role('link',name='舒适阅读 · 文字版',exact=True).click()
+                page.goto(f'http://127.0.0.1:{port}/books/{book}/pages/1?mode=comfort')
                 page.wait_for_url('**/pages/1?mode=comfort')
                 assert page.locator('.flow-page').first.is_visible()
                 assert page.locator('#page-image').count()==0
@@ -141,7 +164,8 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.wait_for_url('**/pages/2?mode=comfort')
                 assert page.locator('#current-page').inner_text()=='2'
                 page.get_by_role('link',name='返回书刊详情').click()
-                page.get_by_role('link',name='继续阅读',exact=True).click()
+                assert page.get_by_role('link',name='从上次页码打开',exact=True).get_attribute('href')==f'/books/{book}/source.pdf#page=2'
+                page.goto(f'http://127.0.0.1:{port}/books/{book}/pages/2?mode=comfort')
                 page.wait_for_url('**/pages/2?mode=comfort')
                 page.get_by_role('link',name='原页',exact=True).click()
                 page.wait_for_url('**/pages/2')
@@ -150,5 +174,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.get_by_role('button',name='退出',exact=True).click()
                 page.wait_for_url('**/login');assert not errors,errors;context.close()
             browser.close()
-    finally:server.should_exit=True;thread.join(timeout=10)
-print('Chromium + WebKit: original reader + comfort typography, themes, continuous flow, progress/mode, TOC, auth: 320/390/768/1440 passed')
+    finally:
+        server.should_exit=True;thread.join(timeout=10)
+        for mock in mocks:mock.stop()
+print('Chromium + WebKit: source PDF entry, exact bytes/HEAD/Range, TOC source links and legacy readers: 320/390/768/1440 passed')

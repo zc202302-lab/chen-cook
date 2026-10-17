@@ -1,5 +1,13 @@
 # Chen Cook 当前交接
 
+## 直接阅读源PDF（2026-10-17 23:01 +08:00 后）
+
+- 用户放弃重排阅读，明确要求直接读源文件。默认“开始阅读”、目录条目和搜索结果改为登录保护的/books/{id}/source.pdf；浏览器接收OSS原PDF字节，排版/文字/图片全部不变，不再以低分辨率JPEG或OCR重排作为主阅读入口。旧两种网页阅读路线仍保留兼容链接，但不在详情页推荐文字重排。
+- 新增source_pdf.py：只读OSS head/get，按256KiB块转发，不存原PDF到服务器磁盘，不跑PDF渲染/OCR，不暴露AccessKey或签名地址。支持HEAD、完整GET、单段Range、206/416、ETag/Last-Modified与If-Range；默认Content-Type application/pdf和Content-Disposition inline，所有请求继续走登录保护。OSS未配置时进入网页设置；读取错误不回显SDK敏感信息。使用现有bucket_client与现有配置，不擅自迁移凭据或改代理/域名/worker。
+- #page=N只作为浏览器定位提示，不能保证所有iPhone内置PDF查看器支持；原PDF阅读进度由浏览器/阅读软件管理。旧网页进度按钮改为“从上次页码打开”，明确仅是此前记录，不虚称可以读取浏览器原生PDF阅读进度。
+- 测试OSS完全模拟，验证原PDF全部字节相等、HEAD无下载、Range区间和后缀范围、无效范围、If-Range、鉴权、错误脱敏、无OSS配置与入口。浏览器验收验证主阅读入口/目录的源PDF地址和实际PDF响应，保留旧网页阅读器作为兼容回归；不把headless中的HTTP验证声称为真实iPhone原生PDF查看器验收。
+- 基于83568b78c0c1d1ac4f778ed83a6ebb5c58b7ad6e；用户22:33问自动更新延迟时公网已直接返回83568b7且CI成功，上一节“部署阻塞”已解除，原延迟原因未取得服务器日志，不作推测。此次另建chen-cook-source worktree，旧工作区修改不动。源PDF版本提交后须核对CI和公网revision，再记录上线。
+
 ## 舒适阅读版（2026-10-17 22:13 +08:00 后）
 
 - 用户新版截图确认布局已更新，但整页双栏图片字体小、放大模糊；用户要求实现电子书式阅读，并同意继续。独立站新增mode=comfort，原版默认与原图片保留，不重新挂回小助手。

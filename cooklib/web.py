@@ -14,6 +14,7 @@ from .auth import csrf_token,require_csrf,verify_password,login_allowed,login_fa
 from .jobs import enqueue,get_job,queue_schema
 from .limits import BodyLimit
 from .reflow import reflow
+from .source_pdf import original_response
 
 BASE=Path(__file__).parent
 TEMPLATES=Jinja2Templates(directory=BASE/'templates')
@@ -95,9 +96,8 @@ def create_app():
         with database() as conn:
             book=conn.execute('SELECT * FROM books WHERE id=?',(book_id,)).fetchone()
             contents=conn.execute('SELECT * FROM book_contents WHERE book_id=? ORDER BY position',(book_id,)).fetchall()
-            first_text=conn.execute('SELECT page FROM pages WHERE book_id=? AND length(trim(text))>=80 ORDER BY page LIMIT 1',(book_id,)).fetchone()
         if not book:raise HTTPException(404,'书刊不存在')
-        return render(request,'book.html',book=book,contents=contents,first_text=first_text)
+        return render(request,'book.html',book=book,contents=contents)
 
     @app.get('/books/{book_id}/pages/{page}')
     def page_view(request:Request,book_id:int,page:int,mode:str='original'):
@@ -108,6 +108,13 @@ def create_app():
         if not row:raise HTTPException(404,'页面不存在')
         flow=reflow(row['text'],row['sha256'],page,row['method']) if mode=='comfort' else None
         return render(request,'page.html',row=row,contents=contents,mode=mode,mode_suffix='?mode=comfort' if mode=='comfort' else '',flow=flow)
+
+    @app.api_route('/books/{book_id}/source.pdf',methods=['GET','HEAD'])
+    def source_pdf(request:Request,book_id:int):
+        with database() as conn:book=conn.execute('SELECT * FROM books WHERE id=?',(book_id,)).fetchone()
+        if not book:raise HTTPException(404,'书刊不存在')
+        if not oss.configured():return RedirectResponse('/settings',303)
+        return original_response(request,book)
 
     @app.get('/books/{book_id}/flow/{page}')
     def flow_page(book_id:int,page:int):

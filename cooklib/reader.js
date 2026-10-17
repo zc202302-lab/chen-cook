@@ -16,8 +16,8 @@
     try { saved = Number(localStorage.getItem(key)); } catch (_) { return; }
     if (Number.isInteger(saved) && saved >= 1 && saved <= total) {
       const link = document.querySelector('#continue-reading');
-      link.href = target(saved); link.hidden = false;
-      document.querySelector('#saved-position').textContent = '本浏览器上次读到 PDF 第' + saved + '页';
+      link.href = '/books/' + id + '/source.pdf#page=' + saved; link.hidden = false;
+      document.querySelector('#saved-position').textContent = '此前网页阅读记录：PDF 第' + saved + '页。原 PDF 内的新进度由浏览器管理。';
     }
     return;
   }
