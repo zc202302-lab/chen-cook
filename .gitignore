@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+/data/
+/backups/
+/artifacts/
+*.sqlite3*
+*.pdf

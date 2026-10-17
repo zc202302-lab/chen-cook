@@ -1,0 +1,8 @@
+[Unit]
+Description=Check verified Chen Cook updates every minute
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+RandomizedDelaySec=15s
+[Install]
+WantedBy=timers.target

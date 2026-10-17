@@ -1,0 +1,27 @@
+name: Chen Cook CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chen-cook-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt httpx==0.28.1 playwright
+      - run: python -m compileall -q cooklib scripts tests
+      - run: node --check cooklib/reader.js && node --check cooklib/manage.js
+      - run: bash -n scripts/bootstrap.sh scripts/deploy.sh
+      - run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/browser_acceptance.py

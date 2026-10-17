@@ -1,0 +1,8 @@
+[Unit]
+Description=Pull verified Chen Cook main revision
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/chen-cook
+ExecStart=/opt/chen-cook/.venv/bin/python scripts/auto_update.py
+TimeoutStartSec=700

@@ -1,0 +1,23 @@
+[Unit]
+Description=Chen Cook PDF reading preview worker
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=chencook
+Group=chencook
+WorkingDirectory=/opt/chen-cook
+EnvironmentFile=/etc/chen-cook/site.env
+ExecStart=/opt/chen-cook/.venv/bin/python -m cooklib.worker
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/chen-cook
+CPUQuota=80%
+MemoryMax=800M
+Nice=10
+[Install]
+WantedBy=multi-user.target

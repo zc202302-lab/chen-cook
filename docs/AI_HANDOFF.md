@@ -1,0 +1,11 @@
+# Chen Cook 当前交接
+
+- 日期：2026-10-17（Asia/Shanghai）。用户要求在新建zc202302-lab/chen-cook独立仓库重新完成部署，域名cook.ziboxiaozhushou.cn；小助手内资料库已通过旧仓库PR #161移除，但用户尚未反馈那次现网移除结果。
+- 仓库起点为空，无历史AGENTS或活动PR。独立站首版开发/验证中。复用旧阅读器与独立SQLite结构，已重新实现独立密码登录、CSRF、OSS网页设置/列表/入库队列、目录网页编辑；原图阅读/缩放/翻页/本浏览器继续阅读保留。首次密码在服务器终端隐藏输入，不索要聊天密码。
+- 后台worker单独systemd服务，阅读入库不做OCR，自动提取PDF书签；无书签时在网页编辑目录。纸面目录OCR、AI总结、细分类尚未实现。原PDF仍在青岛私有OSS。
+- 初装/opt/chen-cook，数据/var/lib/chen-cook，独立账户chencook，172.19.0.1:8020，独立Web/worker/update timer；首次可只读复制旧/opt/chen-assistant/data/cooking-library，不改变旧库。Caddy仅向已知sms-relay-caddy-1的现有配置追加cook主机，备份/校验后reload；发现已有不同cook配置则停止，不覆盖。
+- 自动部署采用青岛定时拉取公开GitHub上已通过ci.yml的push/main提交，不需要GitHub生产SSH私钥；首装仍需服务器执行一次。CI使用ubuntu-latest，不假定旧仓库专属runner可用。
+- 环境无生产SSH入口；本地DNS查询网络暂失败，不能据此判定用户DNS未配置。新域名HTTPS、服务器安装、真实OSS连接、真实数据迁移均待实际验证，不能声称已上线。
+- 早期测试有一次settings保存后自动跳转导致未mock的OSS列表请求，自动审批拦截了测试轮询；已将所有单元测试的OSS列表入口完全mock，下载也使用mock，不需要用户提供密钥或允许测试外连。
+- 本地/workspace/scratch/3b63417353f2/chen-cook。原样书98页无PDF书签；47项目录JSON保留在用户文件，未提交公开仓库。
+- 下一步：完成单元与真实浏览器/部署脚本验证，提交GitHub并检查CI，然后用户在青岛执行一次首装，核验cook域名HTTPS、独立登录和样书阅读。
