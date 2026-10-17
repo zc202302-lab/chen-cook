@@ -54,6 +54,9 @@ def create_app():
     @app.get('/reader.js')
     def reader_script():return FileResponse(BASE/'reader.js',media_type='application/javascript')
 
+    @app.get('/reader.css')
+    def reader_stylesheet():return FileResponse(BASE/'reader.css',media_type='text/css')
+
     @app.get('/manage.js')
     def manage_script():return FileResponse(BASE/'manage.js',media_type='application/javascript')
 

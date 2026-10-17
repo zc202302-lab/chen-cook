@@ -1,10 +1,56 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ row.title }} · 第{{ row.page }}页</title><link rel="stylesheet" href="/style.css"><script src="/reader.js" defer></script><body class="reader-body">
-{% include "navigation.html" %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{ row.title }} · 第{{ row.page }}页</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/reader.css">
+<script src="/reader.js" defer></script>
+</head>
+<body class="reader-body">
 <main data-book="{{ row.book_id }}" data-page="{{ row.page }}" data-total="{{ row.pages }}">
-<a href="/books/{{ row.book_id }}">返回书刊详情</a><h1>{{ row.title }}</h1>
-<div class="reader-toolbar"><nav aria-label="翻页">{% if row.page > 1 %}<a rel="prev" href="/books/{{ row.book_id }}/pages/{{ row.page-1 }}">上一页</a>{% endif %}<span>PDF第{{ row.page }}页 / {{ row.pages }}页</span>{% if row.page < row.pages %}<a rel="next" href="/books/{{ row.book_id }}/pages/{{ row.page+1 }}">下一页</a>{% endif %}</nav><form id="page-jump"><label>跳至 <input aria-label="页码" type="number" min="1" max="{{ row.pages }}" required value="{{ row.page }}"></label><button>前往</button></form><div><button id="zoom-out" type="button" aria-label="缩小">−</button> <output id="zoom-label" aria-live="polite">100%</output> <button id="zoom-in" type="button" aria-label="放大">＋</button> <button id="zoom-reset" type="button">适合宽度</button></div></div>
-<details class="reader-contents"><summary>章节目录（{{ contents|length }}）</summary><nav aria-label="章节目录">{% for item in contents %}<a href="/books/{{ row.book_id }}/pages/{{ item.page }}" {% if item.page == row.page %}aria-current="page"{% endif %}>{{ item.title }} <small>PDF {{ item.page }}</small></a>{% else %}<p>章节目录尚未录入，可输入页码跳转。</p>{% endfor %}</nav></details>
-<div class="page-viewport" tabindex="0" aria-label="原书页面，可横向滚动"><img id="page-image" src="/books/{{ row.book_id }}/images/{{ row.page }}" alt="{{ row.title }} PDF第{{ row.page }}页"></div>
-<p class="muted" id="reading-status" role="status">阅读位置保存在当前浏览器。</p>
-{% if row.text %}<details class="transcript"><summary>查看文字</summary><p>{{ 'PDF提取文字，请核对原页' if not row.method.startswith('ocr:') else 'OCR识别文字，请核对原图中的数字与单位' }}</p><pre>{{ row.text }}</pre></details>{% endif %}
-</main></body></html>
+  <header class="reader-topbar">
+    <a class="reader-back" href="/books/{{ row.book_id }}" aria-label="返回书刊详情">‹ <span>书刊</span></a>
+    <h1>{{ row.title }}</h1>
+    <button type="button" data-dialog="contents-dialog" aria-haspopup="dialog">目录</button>
+  </header>
+  <div class="reader-stage">
+    <div class="page-viewport" tabindex="0" aria-label="原书页面，可横向滚动">
+      <img id="page-image" src="/books/{{ row.book_id }}/images/{{ row.page }}" alt="{{ row.title }} PDF第{{ row.page }}页" fetchpriority="high">
+    </div>
+    <p id="image-status" role="status">正在加载原页…</p>
+    <button id="image-retry" type="button" hidden>重新加载图片</button>
+  </div>
+  <nav class="reader-bottom" aria-label="翻页">
+    {% if row.page > 1 %}<a rel="prev" href="/books/{{ row.book_id }}/pages/{{ row.page-1 }}">‹ 上一页</a>{% else %}<span aria-disabled="true">已是首页</span>{% endif %}
+    <button id="reader-tools" type="button" data-dialog="tools-dialog" aria-haspopup="dialog" aria-label="页码和阅读工具">{{ row.page }} <span>/ {{ row.pages }}</span> <small>⌃</small></button>
+    {% if row.page < row.pages %}<a rel="next" href="/books/{{ row.book_id }}/pages/{{ row.page+1 }}">下一页 ›</a>{% else %}<span aria-disabled="true">已是末页</span>{% endif %}
+  </nav>
+  <button class="reader-restore" id="reader-restore" type="button" hidden>显示工具栏</button>
+  <dialog id="contents-dialog" class="reader-sheet" aria-labelledby="contents-heading">
+    <div class="sheet-header"><h2 id="contents-heading">章节目录</h2><button type="button" data-close-dialog aria-label="关闭目录">×</button></div>
+    <div class="sheet-scroll">
+    {% if contents %}
+      <nav class="reader-toc" aria-label="章节目录">{% for item in contents %}<a href="/books/{{ row.book_id }}/pages/{{ item.page }}" {% if item.page == row.page %}aria-current="page"{% endif %}><span>{{ item.title }}</span><small>第 {{ item.page }} 页</small></a>{% endfor %}</nav>
+    {% else %}
+      <p>这本书尚未录入章节目录。</p><p class="muted">无书签的扫描版 PDF 不会自动生成目录。可以先按页阅读，也可以录入章节或导入目录文件。</p>
+    {% endif %}
+      <a class="reader-edit" href="/books/{{ row.book_id }}/contents">{{ '编辑目录' if contents else '录入 / 导入目录' }}</a>
+    </div>
+  </dialog>
+  <dialog id="tools-dialog" class="reader-sheet" aria-labelledby="tools-heading">
+    <div class="sheet-header"><h2 id="tools-heading">阅读工具</h2><button type="button" data-close-dialog aria-label="关闭阅读工具">×</button></div>
+    <div class="sheet-scroll">
+      <form id="page-jump"><label for="jump-number">跳至 PDF 页码</label><div class="jump-controls"><input id="jump-number" aria-label="页码" type="number" inputmode="numeric" min="1" max="{{ row.pages }}" required value="{{ row.page }}"><span>/ {{ row.pages }}</span><button>前往</button></div></form>
+      <div class="reader-zoom"><span>页面缩放</span><div><button id="zoom-out" type="button" aria-label="缩小">−</button><output id="zoom-label" aria-live="polite">100%</output><button id="zoom-in" type="button" aria-label="放大">＋</button><button id="zoom-reset" type="button">适合宽度</button></div></div>
+      <button id="reader-focus" type="button">专注阅读 · 隐藏工具栏</button>
+      <p class="muted">左右滑动翻页；放大后可横向拖动原页。也可使用浏览器双指缩放。</p>
+      <p class="muted" id="reading-status" role="status">阅读位置保存在当前浏览器。</p>
+      {% if row.text %}<details class="transcript"><summary>查看本页文字</summary><p>{{ 'PDF提取文字，请核对原页' if not row.method.startswith('ocr:') else 'OCR识别文字，请核对原图中的数字与单位' }}</p><pre>{{ row.text }}</pre></details>{% endif %}
+    </div>
+  </dialog>
+  <noscript><p class="reader-noscript">可使用底部链接翻页。<a href="/books/{{ row.book_id }}">返回详情查看目录</a>；跳页、缩放工具需要启用 JavaScript。</p></noscript>
+</main>
+</body>
+</html>
