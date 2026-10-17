@@ -3,6 +3,7 @@
 <a href="/?kind={{ book.kind }}">返回{{ '电子书' if book.kind == 'ebooks' else '杂志' }}</a>
 <main data-book="{{ book.id }}" data-total="{{ book.pages }}">
 <section class="book-header"><img class="cover" src="/books/{{ book.id }}/images/1" alt="{{ book.title }}封面"><div><p class="eyebrow">{{ '电子书' if book.kind == 'ebooks' else '杂志' }} · {{ book.pages }}页</p><h1>{{ book.title }}</h1><p>随时翻阅，按目录找到想看的内容。</p><a class="button" href="/books/{{ book.id }}/pages/1">开始阅读</a> <a class="button secondary" id="continue-reading" href="/books/{{ book.id }}/pages/1" hidden>继续阅读</a><p id="saved-position" class="muted"></p></div></section>
+{% if first_text %}<p><a class="button" href="/books/{{ book.id }}/pages/{{ first_text.page }}?mode=comfort">舒适阅读 · 文字版</a> <small>字号可调，识别文字请核对原页。</small></p>{% endif %}
 <section class="contents"><a class="edit-contents" href="/books/{{ book.id }}/contents">编辑目录</a><h2>书刊目录 <small>{{ contents|length }}篇</small></h2>
 {% if contents %}<ol>{% for item in contents %}<li><a class="toc-link level-{{ item.level }}" href="/books/{{ book.id }}/pages/{{ item.page }}"><span>{{ item.title }}</span><small>PDF {{ item.page }}</small></a></li>{% endfor %}</ol>{% else %}<p>本书尚未录入章节目录，可以先开始阅读或输入页码跳转。</p>{% endif %}</section>
 </main></body></html>

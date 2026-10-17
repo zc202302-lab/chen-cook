@@ -82,6 +82,26 @@ class LibraryTest(unittest.TestCase):
         self.assertIn('这本书尚未录入章节目录',response.text)
         self.assertIn('录入 / 导入目录',response.text)
         self.assertEqual(self.client.get('/reader.css').status_code,200)
+    def test_comfort_is_private_escaped_and_preserves_original(self):
+        book_id,_=import_pdf(self.fixture(),'ebooks/comfort.pdf','文字版',reading_only=True)
+        endpoint=f'/books/{book_id}/flow/1'
+        self.assertEqual(self.client.get(endpoint,follow_redirects=False).status_code,303)
+        self.login()
+        text='步骤1加入150\n克。\n步骤2 <script>alert(1)</script>'
+        with database() as conn:conn.execute('UPDATE pages SET text=?,method=? WHERE book_id=? AND page=1',(text,'ocr:test',book_id))
+        response=self.client.get(f'/books/{book_id}/pages/1?mode=comfort')
+        self.assertEqual(response.status_code,200)
+        self.assertIn('&lt;script&gt;',response.text);self.assertNotIn('<script>alert(1)',response.text)
+        self.assertIn('加入150克',response.text)
+        self.assertIn('id="font-larger"',response.text)
+        self.assertNotIn('id="page-image"',response.text)
+        self.assertIn('?mode=comfort',response.text)
+        payload=self.client.get(endpoint).json()
+        self.assertEqual(payload['page'],1);self.assertTrue(payload['blocks'])
+        self.assertEqual(self.client.get(f'/books/{book_id}/flow/4').status_code,404)
+        self.assertEqual(self.client.get(f'/books/{book_id}/pages/1?mode=invalid').status_code,400)
+        with database() as conn:self.assertEqual(conn.execute('SELECT text FROM pages WHERE book_id=? AND page=1',(book_id,)).fetchone()['text'],text)
+        self.assertIn('id="page-image"',self.client.get(f'/books/{book_id}/pages/1').text)
     def test_durable_import_and_credentials_not_echoed(self):
         source=self.fixture();self.login();token=self.token('/settings')
         self.client.post('/settings',data={'csrf':token,'bucket':'test-bucket','access_id':'private-id','access_secret':'private-secret'})

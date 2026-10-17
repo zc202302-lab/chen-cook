@@ -7,32 +7,44 @@
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/reader.css">
 <script src="/reader.js" defer></script>
+{% if mode == 'comfort' %}<script src="/comfort.js" defer></script>{% endif %}
 </head>
-<body class="reader-body">
-<main data-book="{{ row.book_id }}" data-page="{{ row.page }}" data-total="{{ row.pages }}">
+<body class="reader-body{% if mode == 'comfort' %} comfort-mode{% endif %}">
+<main data-book="{{ row.book_id }}" data-page="{{ row.page }}" data-total="{{ row.pages }}" data-mode="{{ mode }}">
   <header class="reader-topbar">
     <a class="reader-back" href="/books/{{ row.book_id }}" aria-label="返回书刊详情">‹ <span>书刊</span></a>
     <h1>{{ row.title }}</h1>
-    <button type="button" data-dialog="contents-dialog" aria-haspopup="dialog">目录</button>
+    <div class="reader-actions"><a id="reading-mode" href="/books/{{ row.book_id }}/pages/{{ row.page }}{{ '' if mode == 'comfort' else '?mode=comfort' }}">{{ '原页' if mode == 'comfort' else '舒适阅读' }}</a><button type="button" data-dialog="contents-dialog" aria-haspopup="dialog">目录</button></div>
   </header>
   <div class="reader-stage">
+    {% if mode == 'comfort' %}
+    <p class="comfort-notice">文字重排试读 · 配图与版式请看原页；OCR 用量未逐字校对</p>
+    <div id="flow-pages">
+      <section class="flow-page" data-flow-page="{{ row.page }}">
+        <div class="flow-page-label"><span>PDF 第 {{ row.page }} 页</span><a href="/books/{{ row.book_id }}/pages/{{ row.page }}">对照原页</a></div>
+        {% for block in flow.blocks %}{% if block.kind == 'heading' %}<h2{% if block.uncertain %} class="uncertain" title="识别存疑，请核对原页"{% endif %}>{{ block.text }}</h2>{% else %}<p{% if block.uncertain %} class="uncertain" title="识别存疑，请核对原页"{% endif %}>{{ block.text }}</p>{% endif %}{% else %}<p class="flow-empty">本页没有可重排文字，可能是封面、图片页或尚未识别。请查看原页。</p>{% endfor %}
+      </section>
+    </div>
+    <div class="flow-load"><button id="flow-more" type="button">继续向下阅读</button><p id="flow-status" role="status"></p></div>
+    {% else %}
     <div class="page-viewport" tabindex="0" aria-label="原书页面，可横向滚动">
       <img id="page-image" src="/books/{{ row.book_id }}/images/{{ row.page }}" alt="{{ row.title }} PDF第{{ row.page }}页" fetchpriority="high">
     </div>
     <p id="image-status" role="status">正在加载原页…</p>
     <button id="image-retry" type="button" hidden>重新加载图片</button>
+    {% endif %}
   </div>
   <nav class="reader-bottom" aria-label="翻页">
-    {% if row.page > 1 %}<a rel="prev" href="/books/{{ row.book_id }}/pages/{{ row.page-1 }}">‹ 上一页</a>{% else %}<span aria-disabled="true">已是首页</span>{% endif %}
-    <button id="reader-tools" type="button" data-dialog="tools-dialog" aria-haspopup="dialog" aria-label="页码和阅读工具">{{ row.page }} <span>/ {{ row.pages }}</span> <small>⌃</small></button>
-    {% if row.page < row.pages %}<a rel="next" href="/books/{{ row.book_id }}/pages/{{ row.page+1 }}">下一页 ›</a>{% else %}<span aria-disabled="true">已是末页</span>{% endif %}
+    {% if row.page > 1 %}<a rel="prev" href="/books/{{ row.book_id }}/pages/{{ row.page-1 }}{{ mode_suffix }}">‹ 上一页</a>{% else %}<span class="flow-prev-bound" aria-disabled="true">已是首页</span>{% endif %}
+    <button id="reader-tools" type="button" data-dialog="tools-dialog" aria-haspopup="dialog" aria-label="页码和阅读工具"><b id="current-page">{{ row.page }}</b> <span>/ {{ row.pages }}</span> <small>⌃</small></button>
+    {% if row.page < row.pages %}<a rel="next" href="/books/{{ row.book_id }}/pages/{{ row.page+1 }}{{ mode_suffix }}">下一页 ›</a>{% else %}<span class="flow-next-bound" aria-disabled="true">已是末页</span>{% endif %}
   </nav>
   <button class="reader-restore" id="reader-restore" type="button" hidden>显示工具栏</button>
   <dialog id="contents-dialog" class="reader-sheet" aria-labelledby="contents-heading">
     <div class="sheet-header"><h2 id="contents-heading">章节目录</h2><button type="button" data-close-dialog aria-label="关闭目录">×</button></div>
     <div class="sheet-scroll">
     {% if contents %}
-      <nav class="reader-toc" aria-label="章节目录">{% for item in contents %}<a href="/books/{{ row.book_id }}/pages/{{ item.page }}" {% if item.page == row.page %}aria-current="page"{% endif %}><span>{{ item.title }}</span><small>第 {{ item.page }} 页</small></a>{% endfor %}</nav>
+      <nav class="reader-toc" aria-label="章节目录">{% for item in contents %}<a href="/books/{{ row.book_id }}/pages/{{ item.page }}{{ mode_suffix }}" {% if item.page == row.page %}aria-current="page"{% endif %}><span>{{ item.title }}</span><small>第 {{ item.page }} 页</small></a>{% endfor %}</nav>
     {% else %}
       <p>这本书尚未录入章节目录。</p><p class="muted">无书签的扫描版 PDF 不会自动生成目录。可以先按页阅读，也可以录入章节或导入目录文件。</p>
     {% endif %}
@@ -43,9 +55,16 @@
     <div class="sheet-header"><h2 id="tools-heading">阅读工具</h2><button type="button" data-close-dialog aria-label="关闭阅读工具">×</button></div>
     <div class="sheet-scroll">
       <form id="page-jump"><label for="jump-number">跳至 PDF 页码</label><div class="jump-controls"><input id="jump-number" aria-label="页码" type="number" inputmode="numeric" min="1" max="{{ row.pages }}" required value="{{ row.page }}"><span>/ {{ row.pages }}</span><button>前往</button></div></form>
-      <div class="reader-zoom"><span>页面缩放</span><div><button id="zoom-out" type="button" aria-label="缩小">−</button><output id="zoom-label" aria-live="polite">100%</output><button id="zoom-in" type="button" aria-label="放大">＋</button><button id="zoom-reset" type="button">适合宽度</button></div></div>
+      {% if mode == 'comfort' %}
+      <div class="comfort-settings">
+        <div><span>文字大小</span><button id="font-smaller" type="button" aria-label="缩小字号">A−</button><output id="font-size" aria-live="polite">20</output><button id="font-larger" type="button" aria-label="放大字号">A＋</button></div>
+        <label>行距 <select id="line-spacing" aria-label="行距"><option value="1.6">紧凑</option><option value="1.9" selected>舒适</option><option value="2.2">宽松</option></select></label>
+        <label>字体 <select id="reader-font" aria-label="字体"><option value="sans">清晰黑体</option><option value="serif">书籍宋体</option></select></label>
+        <div class="comfort-themes" aria-label="阅读背景"><button type="button" data-theme="paper" aria-pressed="true">纸色</button><button type="button" data-theme="white" aria-pressed="false">纯白</button><button type="button" data-theme="night" aria-pressed="false">夜间</button></div>
+      </div>
+      {% else %}<div class="reader-zoom"><span>页面缩放</span><div><button id="zoom-out" type="button" aria-label="缩小">−</button><output id="zoom-label" aria-live="polite">100%</output><button id="zoom-in" type="button" aria-label="放大">＋</button><button id="zoom-reset" type="button">适合宽度</button></div></div>{% endif %}
       <button id="reader-focus" type="button">专注阅读 · 隐藏工具栏</button>
-      <p class="muted">左右滑动翻页；放大后可横向拖动原页。也可使用浏览器双指缩放。</p>
+      <p class="muted">{{ '文字连续向下阅读，阅读位置按原 PDF 页码记录。字号、行距和背景保存在当前浏览器。' if mode == 'comfort' else '左右滑动翻页；放大后可横向拖动原页。也可使用浏览器双指缩放。' }}</p>
       <p class="muted" id="reading-status" role="status">阅读位置保存在当前浏览器。</p>
       {% if row.text %}<details class="transcript"><summary>查看本页文字</summary><p>{{ 'PDF提取文字，请核对原页' if not row.method.startswith('ocr:') else 'OCR识别文字，请核对原图中的数字与单位' }}</p><pre>{{ row.text }}</pre></details>{% endif %}
     </div>

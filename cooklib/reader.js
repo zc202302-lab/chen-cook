@@ -5,9 +5,11 @@
   const id = book.dataset.book, total = Number(book.dataset.total);
   const key = 'chen-cooking-reader-v1-' + id;
   const page = Number(book.dataset.page);
-  const target = n => '/books/' + id + '/pages/' + n;
+  let mode = book.dataset.mode || 'original';
+  if (!page) { try { mode = localStorage.getItem(key + '-mode') || mode; } catch (_) {} }
+  const target = n => '/books/' + id + '/pages/' + n + (mode === 'comfort' ? '?mode=comfort' : '');
   if (page) {
-    try { localStorage.setItem(key, String(page)); }
+    try { localStorage.setItem(key, String(page)); localStorage.setItem(key + '-mode', mode); }
     catch (_) { document.querySelector('#reading-status').textContent = '浏览器未允许保存阅读位置。'; }
   } else {
     let saved;
@@ -29,6 +31,7 @@
   const viewport = document.querySelector('.page-viewport');
   const status = document.querySelector('#image-status');
   const retry = document.querySelector('#image-retry');
+  if (image) {
   const loaded = () => { status.hidden = true; retry.hidden = true; };
   const failed = () => { status.hidden = false; status.textContent = '原页加载失败，请重试。'; retry.hidden = false; };
   image.addEventListener('load', loaded);
@@ -37,6 +40,7 @@
   retry.addEventListener('click', () => {
     status.textContent = '正在加载原页…'; retry.hidden = true; image.src = image.src;
   });
+  }
   document.querySelectorAll('[data-dialog]').forEach(button => {
     button.addEventListener('click', () => document.getElementById(button.dataset.dialog).showModal());
   });
@@ -55,6 +59,7 @@
   restore.addEventListener('click', () => {
     document.body.classList.remove('reader-focus'); restore.hidden = true;
   });
+  if (!image) return;
   let zoom = 100;
   const resize = n => {
     zoom = Math.min(250, Math.max(50, n));

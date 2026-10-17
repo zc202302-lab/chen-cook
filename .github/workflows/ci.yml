@@ -20,7 +20,7 @@ jobs:
           python-version: '3.11'
       - run: pip install -r requirements.txt httpx==0.28.1 playwright
       - run: python -m compileall -q cooklib scripts tests
-      - run: node --check cooklib/reader.js && node --check cooklib/manage.js
+      - run: node --check cooklib/reader.js && node --check cooklib/manage.js && node --check cooklib/comfort.js
       - run: bash -n scripts/bootstrap.sh scripts/deploy.sh
       - run: python -m unittest discover -s tests -p 'test_*.py' -v
       - run: python -m playwright install --with-deps chromium webkit

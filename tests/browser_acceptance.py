@@ -45,6 +45,7 @@ with tempfile.TemporaryDirectory() as tmp:
             leaf.draw_rect(fitz.Rect(0,0,595,125),color=None,fill=(.13,.37,.27))
             leaf.insert_text((30,80),f'READING DEMO / {number+1}',fontsize=26,color=(1,1,1))
             leaf.insert_text((30,175),'A full-width page, with controls out of the way.',fontsize=16)
+            leaf.insert_textbox(fitz.Rect(30,210,565,750),('Method 1: add 150 grams. Keep the original quantity unchanged. Read the next step carefully. '*12),fontsize=13)
         doc.set_toc([[1,'P8 测试章节',2]]);doc.save(source)
     book,_=import_pdf(source,'magazines/test.pdf','测试样刊',reading_only=True)
     from cooklib.web import create_app
@@ -117,8 +118,37 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.get_by_role('link',name='编辑目录',exact=True).click()
                 page.get_by_label('章节名称').fill('P8 测试章节');page.get_by_label('实际PDF页码').fill('2')
                 page.get_by_role('button',name='保存目录',exact=True).click()
+                page.get_by_role('link',name='舒适阅读 · 文字版',exact=True).click()
+                page.wait_for_url('**/pages/1?mode=comfort')
+                assert page.locator('.flow-page').first.is_visible()
+                assert page.locator('#page-image').count()==0
+                assert page.locator('.flow-page p').first.evaluate('(el)=>getComputedStyle(el).fontSize')=='20px'
+                page.get_by_role('button',name='页码和阅读工具').click()
+                page.get_by_role('button',name='放大字号',exact=True).click()
+                assert page.locator('#font-size').inner_text()=='22'
+                page.get_by_label('行距',exact=True).select_option('2.2')
+                page.get_by_label('字体',exact=True).select_option('serif')
+                page.get_by_role('button',name='夜间',exact=True).click()
+                page.get_by_role('button',name='关闭阅读工具').click()
+                page.reload()
+                assert page.locator('body').get_attribute('data-theme')=='night'
+                assert page.locator('.flow-page p').first.evaluate('(el)=>getComputedStyle(el).fontSize')=='22px'
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
+                page.screenshot(path=f'artifacts/comfort-{engine}-{width}.png')
+                page.evaluate('window.scrollTo(0,document.documentElement.scrollHeight)')
+                page.locator('[data-flow-page="2"]').wait_for()
+                page.locator('[data-flow-page="2"]').scroll_into_view_if_needed()
+                page.wait_for_url('**/pages/2?mode=comfort')
+                assert page.locator('#current-page').inner_text()=='2'
+                page.get_by_role('link',name='返回书刊详情').click()
+                page.get_by_role('link',name='继续阅读',exact=True).click()
+                page.wait_for_url('**/pages/2?mode=comfort')
+                page.get_by_role('link',name='原页',exact=True).click()
+                page.wait_for_url('**/pages/2')
+                reading_layout(page,width)
+                page.get_by_role('link',name='返回书刊详情').click()
                 page.get_by_role('button',name='退出',exact=True).click()
                 page.wait_for_url('**/login');assert not errors,errors;context.close()
             browser.close()
     finally:server.should_exit=True;thread.join(timeout=10)
-print('Chromium + WebKit: first-screen reading, dialogs, zoom/pan, swipe guards, focus mode, bounds, progress, TOC, auth: 320/390/768/1440 passed')
+print('Chromium + WebKit: original reader + comfort typography, themes, continuous flow, progress/mode, TOC, auth: 320/390/768/1440 passed')

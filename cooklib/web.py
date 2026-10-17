@@ -13,6 +13,7 @@ from .contents import replace_contents
 from .auth import csrf_token,require_csrf,verify_password,login_allowed,login_failed
 from .jobs import enqueue,get_job,queue_schema
 from .limits import BodyLimit
+from .reflow import reflow
 
 BASE=Path(__file__).parent
 TEMPLATES=Jinja2Templates(directory=BASE/'templates')
@@ -57,6 +58,9 @@ def create_app():
     @app.get('/reader.css')
     def reader_stylesheet():return FileResponse(BASE/'reader.css',media_type='text/css')
 
+    @app.get('/comfort.js')
+    def comfort_script():return FileResponse(BASE/'comfort.js',media_type='application/javascript')
+
     @app.get('/manage.js')
     def manage_script():return FileResponse(BASE/'manage.js',media_type='application/javascript')
 
@@ -91,16 +95,26 @@ def create_app():
         with database() as conn:
             book=conn.execute('SELECT * FROM books WHERE id=?',(book_id,)).fetchone()
             contents=conn.execute('SELECT * FROM book_contents WHERE book_id=? ORDER BY position',(book_id,)).fetchall()
+            first_text=conn.execute('SELECT page FROM pages WHERE book_id=? AND length(trim(text))>=80 ORDER BY page LIMIT 1',(book_id,)).fetchone()
         if not book:raise HTTPException(404,'书刊不存在')
-        return render(request,'book.html',book=book,contents=contents)
+        return render(request,'book.html',book=book,contents=contents,first_text=first_text)
 
     @app.get('/books/{book_id}/pages/{page}')
-    def page_view(request:Request,book_id:int,page:int):
+    def page_view(request:Request,book_id:int,page:int,mode:str='original'):
+        if mode not in ('original','comfort'):raise HTTPException(400,'阅读模式不正确')
         with database() as conn:
-            row=conn.execute('SELECT b.title,b.pages,p.* FROM pages p JOIN books b ON b.id=p.book_id WHERE book_id=? AND page=?',(book_id,page)).fetchone()
+            row=conn.execute('SELECT b.title,b.pages,b.sha256,p.* FROM pages p JOIN books b ON b.id=p.book_id WHERE book_id=? AND page=?',(book_id,page)).fetchone()
             contents=conn.execute('SELECT * FROM book_contents WHERE book_id=? ORDER BY position',(book_id,)).fetchall()
         if not row:raise HTTPException(404,'页面不存在')
-        return render(request,'page.html',row=row,contents=contents)
+        flow=reflow(row['text'],row['sha256'],page,row['method']) if mode=='comfort' else None
+        return render(request,'page.html',row=row,contents=contents,mode=mode,mode_suffix='?mode=comfort' if mode=='comfort' else '',flow=flow)
+
+    @app.get('/books/{book_id}/flow/{page}')
+    def flow_page(book_id:int,page:int):
+        with database() as conn:
+            row=conn.execute('SELECT b.pages,b.sha256,p.* FROM pages p JOIN books b ON b.id=p.book_id WHERE book_id=? AND page=?',(book_id,page)).fetchone()
+        if not row:raise HTTPException(404,'页面不存在')
+        return {'page':page,'total':row['pages'],**reflow(row['text'],row['sha256'],page,row['method'])}
 
     @app.get('/books/{book_id}/images/{page}')
     def page_image(book_id:int,page:int):
