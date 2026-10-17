@@ -1,5 +1,8 @@
 # Chen Cook 当前交接
 
+- 最新证书证据（2026-10-17 20:52 +08:00）：用户截图的本地health为ok=true/version0.1.0/service=chen-cook/revision=a45f7a75074fc13b516fa9f99deda807b41344bb。Caddy对cook.ziboxiaozhushou.cn的HTTP-01验证成功，authz_status=valid，日志明确certificate obtained successfully（Let’s Encrypt），证书已取得；先前TLS失败出现在初始申请阶段，不再按证书未签发排查。尚未收到公网HTTPS health重试或浏览器登录/书刊体验证据；本会话网页查询工具无法访问health，不能将工具失败等同网站失败。下一步用户直接打开https://cook.ziboxiaozhushou.cn并用已在服务器设置的密码登录，核对样书封面、原页与目录。未读取密码或真实OSS凭据。
+
+
 - 最新生产证据（2026-10-17 20:50 +08:00）：用户20:48首次安装截图显示独立账户已保存、旧样书数据库与预览复制成功且原库未改变，本地独立站健康检查成功并输出revision911a9731c4054791db3573d495d568fa67443332。Caddy validate成功，已将cook主机追加到/opt/sms-relay/Caddyfile并reload，备份/opt/sms-relay/Caddyfile.chen-cook-backup-20261017-204805；Web/worker/update.timer已enable。公网HTTPS curl失败(35) tlsv1 alert internal error，不能确认已上线。下一步只读核对cook域名A解析、Caddy的ACME/证书日志；不盲目改上游或现有主站配置，不以格式警告为故障。尚未验证浏览器登录或真实OSS设置。
 
 
