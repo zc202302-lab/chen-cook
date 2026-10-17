@@ -8,6 +8,7 @@
 - 验证新增正文起点<=56px、手机全宽/桌面960px、底栏高度、缩放内部横向滚动不撑破页面、原生弹层、专注恢复、手势保护、页码边界、继续阅读。CI保留原320/390/768/1440全流程，增加WebKit相同尺寸与测试截图制品；测试PDF为合成样本，不含私人书刊。提交前本地单元、语法检查，提交后须核对真实CI结果。
 - 服务器已启用按分钟拉取通过CI的main的update.timer。本次没有生产SSH权限；自动更新后的实际revision与用户手机复验仍需独立确认，不以GitHub提交代替上线证据。
 - 工作基于main c70c9dea1bdfc87fad8808f906453ba79a949097（CI39034294581成功），新worktree chen-cook-reader；旧chen-cook目录的未提交改动保留不动。
+- 已验证结果：阅读器功能提交442d9ed28a9ff9f3b479e24efea7e28d19e1e8b9；本地9项测试及Python/JS/Shell检查通过。GitHub CI39038977708/job117414406417全部success，Chromium与WebKit均完成320/390/768/1440全流程，8张合成样本截图已保存为reader-browser-screenshots制品（12102534011）。公网HTTPS /health已直接返回ok=true/service=chen-cook/revision=442d9ed28a9ff9f3b479e24efea7e28d19e1e8b9，确认自动更新已部署本次功能；无需用户重新安装。尚未取得用户真机对新版手势/浏览器工具栏的复验，WebKit自动化不等同于真实iPhone系统验收。
 
 ## 历史过程（以下“待安装”等为当时状态，以当前状态为准）
 
