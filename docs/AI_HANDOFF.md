@@ -1,5 +1,8 @@
 # Chen Cook 当前交接
 
+- 最新生产证据（2026-10-17 20:50 +08:00）：用户20:48首次安装截图显示独立账户已保存、旧样书数据库与预览复制成功且原库未改变，本地独立站健康检查成功并输出revision911a9731c4054791db3573d495d568fa67443332。Caddy validate成功，已将cook主机追加到/opt/sms-relay/Caddyfile并reload，备份/opt/sms-relay/Caddyfile.chen-cook-backup-20261017-204805；Web/worker/update.timer已enable。公网HTTPS curl失败(35) tlsv1 alert internal error，不能确认已上线。下一步只读核对cook域名A解析、Caddy的ACME/证书日志；不盲目改上游或现有主站配置，不以格式警告为故障。尚未验证浏览器登录或真实OSS设置。
+
+
 - 安装阻塞证据（2026-10-17 17:33 +08:00）：用户截图显示新版configure.py已使用“密码不能为空”规则，但hash_password收到空字符串并退出；之后用户在root shell提示符输入文本，被当作命令并提示command not found。未保存账户配置，也无服务/HTTPS完成证据。下一步重新运行bootstrap，等待隐藏输入密码提示后输入非空密码并回车，再确认一次；不要在shell提示符下直接输入密码。不记录或复述截图中出现的敏感输入。
 
 
