@@ -2,10 +2,16 @@
 set -Eeuo pipefail
 [[ $(id -u) == 0 ]] || { echo '请在青岛服务器以root执行首次安装'; exit 1; }
 cd /opt/chen-cook
-command -v python3 >/dev/null
+cook_python=''
+for candidate in python3.11 python3.12 python3; do
+  if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys; assert sys.version_info >= (3,11)' 2>/dev/null; then
+    cook_python="$candidate"; break
+  fi
+done
+[[ -n "$cook_python" ]] || { echo '需要Python3.11或更新版本，尚未修改现有服务'; exit 1; }
 command -v docker >/dev/null
 # Do not bind a public address or silently take another service's port.
-python3 - <<'PY'
+"$cook_python" - <<'PY' 
 import socket
 address='172.19.0.1'
 try:
@@ -15,7 +21,7 @@ except OSError:
  if subprocess.run(['systemctl','is-active','--quiet','chen-cook']).returncode:
   raise SystemExit('172.19.0.1:8020不可用，未安装；请核对Caddy网桥和端口占用')
 PY
-python3 -m venv .venv
+"$cook_python" -m venv .venv
 .venv/bin/pip install -q -r requirements.txt
 id chencook >/dev/null 2>&1 || useradd --system --home-dir /var/lib/chen-cook --shell /usr/sbin/nologin chencook
 install -d -o chencook -g chencook -m 0700 /var/lib/chen-cook

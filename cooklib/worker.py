@@ -44,6 +44,9 @@ def main():
     root().mkdir(parents=True,exist_ok=True)
     with (root()/'worker.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        # A killed worker may leave its temporary download; originals remain in OSS.
+        for pending in root().glob('import-*'):
+            if pending.is_dir() and not pending.is_symlink():shutil.rmtree(pending)
         with database() as conn:
             queue_schema(conn)
             conn.execute("UPDATE import_jobs SET status='queued',page=0,total=0 WHERE status='running'")
