@@ -1,8 +1,9 @@
 """Standalone private book library; never imports the assistant application."""
 import os
+import json
 from pathlib import Path
 import secrets
-from fastapi import FastAPI,Request,HTTPException,Form
+from fastapi import FastAPI,Request,HTTPException,Form,UploadFile,File
 from fastapi.responses import FileResponse,HTMLResponse,RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -168,6 +169,18 @@ def create_app():
             if not entries and form.get('clear')!='1':raise ValueError('如需清空目录，请勾选确认清空')
             replace_contents(book_id,entries)
         except ValueError as error:raise HTTPException(400,str(error))
+        return RedirectResponse(f'/books/{book_id}',303)
+
+    @app.post('/books/{book_id}/contents/file')
+    async def import_contents_file(request:Request,book_id:int,file:UploadFile=File(...),csrf:str=Form('')):
+        require_csrf(request,csrf)
+        payload=await file.read(128*1024+1)
+        if len(payload)>128*1024:raise HTTPException(413,'目录文件过大')
+        try:
+            entries=json.loads(payload.decode('utf-8-sig'))
+            if not entries:raise ValueError('目录文件为空')
+            replace_contents(book_id,entries)
+        except (ValueError,UnicodeError):raise HTTPException(400,'目录文件格式或页码不正确，原目录未修改')
         return RedirectResponse(f'/books/{book_id}',303)
 
     return app

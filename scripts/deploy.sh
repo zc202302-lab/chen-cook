@@ -9,7 +9,7 @@ fi
 target="${1:-$(git rev-parse HEAD)}"
 git rev-parse --verify "$target^{commit}" >/dev/null
 old="$(git rev-parse HEAD)"
-mkdir -p /var/backups/chen-cook
+install -d -m 0700 /var/backups/chen-cook
 if [[ -f /var/lib/chen-cook/catalogue.sqlite3 ]]; then
   .venv/bin/python - <<'PY'
 import sqlite3,datetime

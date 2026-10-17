@@ -53,6 +53,17 @@ class LibraryTest(unittest.TestCase):
         response=self.client.post(f'/books/{book_id}/contents',data={'csrf':token,'title':'网页新章节','page':'3'})
         self.assertEqual(response.status_code,200);self.assertIn('网页新章节',response.text)
         self.assertEqual(self.client.get(f'/books/{book_id}/pages/4').status_code,404)
+    def test_directory_file_upload_is_atomic_and_csrf_protected(self):
+        book_id,_=import_pdf(self.fixture(),'ebooks/toc.pdf','目录样书',reading_only=True)
+        self.login();url=f'/books/{book_id}/contents/file'
+        data=b'[{"title":"Uploaded chapter","page":3}]'
+        self.assertEqual(self.client.post(url,files={'file':('toc.json',data)}).status_code,403)
+        token=self.token(f'/books/{book_id}/contents')
+        response=self.client.post(url,data={'csrf':token},files={'file':('toc.json',data)})
+        self.assertEqual(response.status_code,200);self.assertIn('Uploaded chapter',response.text)
+        response=self.client.post(url,data={'csrf':token},files={'file':('bad.json',b'[{"title":"bad","page":999}]')})
+        self.assertEqual(response.status_code,400)
+        self.assertIn('Uploaded chapter',self.client.get(f'/books/{book_id}').text)
     def test_durable_import_and_credentials_not_echoed(self):
         source=self.fixture();self.login();token=self.token('/settings')
         self.client.post('/settings',data={'csrf':token,'bucket':'test-bucket','access_id':'private-id','access_secret':'private-secret'})
