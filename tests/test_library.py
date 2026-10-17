@@ -15,7 +15,7 @@ from cooklib import worker,oss
 
 class LibraryTest(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):cls.password='test-password-12345';cls.hashed=hash_password(cls.password)
+    def setUpClass(cls):cls.password='123';cls.hashed=hash_password(cls.password)
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.env=patch.dict(os.environ,COOK_DATA_DIR=self.tmp.name,COOK_PASSWORD_HASH=self.hashed,COOK_SESSION_SECRET='test-secret-'*5,COOK_SECURE_COOKIE='0')

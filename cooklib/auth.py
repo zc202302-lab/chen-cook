@@ -8,8 +8,8 @@ from fastapi import HTTPException
 
 
 def hash_password(password, salt=None):
-    if len(password)<12:
-        raise ValueError('密码至少12位')
+    if not password:
+        raise ValueError('密码不能为空')
     salt=salt or secrets.token_hex(16)
     digest=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),600000).hex()
     return f'pbkdf2_sha256$600000${salt}${digest}'

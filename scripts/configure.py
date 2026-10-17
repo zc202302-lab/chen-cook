@@ -11,7 +11,7 @@ path=Path('/etc/chen-cook/site.env')
 if path.exists():
     print('保留已有独立站账户配置')
     raise SystemExit(0)
-password=getpass.getpass('设置独立书刊站登录密码（至少12位，不显示）：')
+password=getpass.getpass('设置独立书刊站登录密码（不能为空，不显示）：')
 if password!=getpass.getpass('再次输入密码：'):raise SystemExit('两次密码不一致，未保存')
 hashed=hash_password(password)
 path.parent.mkdir(parents=True,exist_ok=True)
