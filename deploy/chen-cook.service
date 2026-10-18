@@ -1,14 +1,15 @@
 [Unit]
-Description=Chen Cook private book library
+Description=Chen Cook reading website
 After=network-online.target
 Wants=network-online.target
 [Service]
 User=chencook
 Group=chencook
 WorkingDirectory=/opt/chen-cook
-EnvironmentFile=/etc/chen-cook/site.env
+Environment=COOK_READER_DATA=/var/lib/chen-cook/reader
+EnvironmentFile=-/etc/chen-cook/reader.env
 EnvironmentFile=-/etc/chen-cook/revision.env
-ExecStart=/opt/chen-cook/.venv/bin/uvicorn cooklib.main:app --host 172.19.0.1 --port 8020 --workers 1 --proxy-headers --forwarded-allow-ips=172.19.0.0/16
+ExecStart=/opt/chen-cook/.venv/bin/uvicorn server:app --host 172.19.0.1 --port 8020 --workers 1 --proxy-headers --forwarded-allow-ips=172.19.0.0/16
 Restart=on-failure
 UMask=0077
 NoNewPrivileges=true

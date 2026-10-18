@@ -2,10 +2,8 @@
 __pycache__/
 *.pyc
 .env
-.env.*
-!.env.example
-/data/
-/backups/
-/artifacts/
-*.sqlite3*
+data/
+artifacts/
+*.zip
 *.pdf
+*.sqlite3
