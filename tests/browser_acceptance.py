@@ -10,10 +10,11 @@ from pathlib import Path
 import httpx
 from playwright.sync_api import sync_playwright,expect
 
-sys.path.insert(0,str(Path(__file__).resolve().parent))
+root=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(root))
+sys.path.insert(0,str(root/'tests'))
 from test_reader import package,TOKEN
 
-root=Path(__file__).resolve().parents[1]
 artifacts=root/'artifacts';artifacts.mkdir(exist_ok=True)
 with tempfile.TemporaryDirectory() as tmp:
     with socket.socket() as socket_:socket_.bind(('127.0.0.1',0));port=socket_.getsockname()[1]

@@ -43,7 +43,8 @@ import json,sys
 b=json.loads(sys.argv[1]);assert b['ok'] and b['service']=='chen-cook' and b['mode']=='reader' and b['revision']==sys.argv[2]
 PY
     then
-      systemctl disable --now chen-cook-worker.service || true
+      systemctl stop chen-cook-worker.service || true
+      systemctl disable chen-cook-worker.service || true
       printf '%s\n' "$target" > /var/lib/chen-cook/reader/deployed-revision
       echo "阅读端已更新：$target"
       exit 0
