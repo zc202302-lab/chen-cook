@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
-from .store import database, root
+from .store import database, root, index_page
 
 
 def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None, reading_only=False):
@@ -75,7 +75,7 @@ def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None
                 conn.execute('INSERT INTO book_contents VALUES(?,?,?,?,?)',(book_id,position,name,target_page,level))
         for number,text,method in texts:
             conn.execute('INSERT INTO pages VALUES(?,?,?,?)',(book_id,number,text,method))
-            conn.execute('INSERT INTO page_search(text,book_id,page) VALUES(?,?,?)',(text,book_id,number))
+            index_page(conn, text, book_id, number)
     return book_id, True
 
 
