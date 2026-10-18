@@ -29,7 +29,8 @@ def save_settings(bucket, access_id, access_secret):
 def bucket_client():
     import oss2
     data=json.loads(settings_path().read_text())
-    return oss2.Bucket(oss2.Auth(data['access_id'],data['access_secret']), 'https://oss-cn-qingdao.aliyuncs.com',data['bucket'],connect_timeout=30)
+    auth=oss2.AuthV4(data['access_id'],data['access_secret'])
+    return oss2.Bucket(auth,'https://oss-cn-qingdao.aliyuncs.com',data['bucket'],region='cn-qingdao',connect_timeout=30)
 
 
 def valid_key(key):

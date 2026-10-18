@@ -1,5 +1,12 @@
 # Chen Cook 当前交接
 
+## OSS V4签名修复（2026-10-18 08:44 +08:00 后）
+
+- 用户真实服务器诊断明确返回AccessDenied/403、Message="V1 signature is forbidden."、EC=0002-00000080。本次根因是代码使用oss2.Auth旧签名，被OSS拒绝；不能继续让用户重复授权或更换密钥。此前根据灰色复选框推断未授权已纠正，用户已确认新增授权。
+- 依据阿里云Python SDK官方初始化文档，将唯一共享bucket_client改为oss2.AuthV4并明确region='cn-qingdao'，已有OSS设置格式与凭据不变；列表、导入下载、原PDF HEAD/Range读取都会使用该客户端。依赖已固定oss2==2.19.1，无需更换SDK包。
+- 新增真实SDK签名回归，HTTP发送方法完全拦截，无外部OSS访问；验证ListObjects、HeadObject、GetObject Range都产生OSS4-HMAC-SHA256和青岛地域scope，避免旧测试只mock业务入口而漏掉签名不兼容。
+- 另建chen-cook-v4工作区，基于936c21784cfb41ea91274d4fb1252e36f9b7af2b；旧工作区改动保留。提交前执行本地测试，提交后核对CI与公网revision。用户密钥从未发送到聊天，也不获取生产密钥；真实OSS连通需用户网页刷新验证。
+
 ## 直接阅读源PDF（2026-10-17 23:01 +08:00 后）
 
 - 用户放弃重排阅读，明确要求直接读源文件。默认“开始阅读”、目录条目和搜索结果改为登录保护的/books/{id}/source.pdf；浏览器接收OSS原PDF字节，排版/文字/图片全部不变，不再以低分辨率JPEG或OCR重排作为主阅读入口。旧两种网页阅读路线仍保留兼容链接，但不在详情页推荐文字重排。
