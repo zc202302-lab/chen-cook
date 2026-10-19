@@ -37,6 +37,17 @@ def validate_book(book):
             if not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',str(block.get('id',''))) or block['id'] in ids:
                 raise ValueError('内容块编号无效或重复')
             ids.add(block['id'])
+            if 'role' in block and block['role'] not in ('chapter','catalog','recipe','subheading','procedure','ingredients','tips','page_furniture'):
+                raise ValueError('内容结构类型错误')
+            catalog=block.get('catalog')
+            if catalog is not None:
+                if not isinstance(catalog,dict) or not isinstance(catalog.get('text_snapshot'),str) or not isinstance(catalog.get('rows'),list) or len(catalog['rows'])>5000:
+                    raise ValueError('目录结构错误')
+                for row in catalog['rows']:
+                    if not isinstance(row,dict) or not isinstance(row.get('raw'),str):raise ValueError('目录行格式错误')
+                    for key in ('title','printed_page','target_id','evidence'):
+                        if key in row and not isinstance(row[key],str):raise ValueError('目录条目格式错误')
+                    if row.get('target_id') and not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',row['target_id']):raise ValueError('目录目标错误')
             if block.get('kind') not in ('text','heading','image'):
                 raise ValueError('内容类型错误')
             if block['kind']=='image' and not ASSET.fullmatch(str(block.get('src',''))):
@@ -54,7 +65,7 @@ def public_book(book):
     for p in book['pages']:
         blocks=[]
         for b in p['blocks']:
-            blocks.append({k:b[k] for k in ('id','kind','page','level','reviewed','text','src','caption','box','confidence','note') if k in b})
+            blocks.append({k:b[k] for k in ('id','kind','page','level','reviewed','text','src','caption','box','confidence','note','role','catalog') if k in b})
         out['pages'].append(dict(page=p['page'],blocks=blocks,warning=p.get('warning','')))
     return out
 

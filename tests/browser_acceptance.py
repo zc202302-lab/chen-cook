@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 except httpx.TransportError:pass
                 time.sleep(.1)
             else:raise RuntimeError('test server failed to start')
-            result=client.post('/api/import',headers={'x-sync-token':TOKEN},files={'file':('synthetic.zip',package())})
+            result=client.post('/api/import',headers={'x-sync-token':TOKEN},files={'file':('synthetic.zip',package(catalog=True))})
             result.raise_for_status();bid=result.json()['id']
         with sync_playwright() as p:
             for name in ('chromium','webkit'):
@@ -46,6 +46,12 @@ with tempfile.TemporaryDirectory() as tmp:
                             expect(page.locator('#'+button)).to_be_hidden()
                         page.locator('.book').click()
                         expect(page.locator('#reader')).to_be_visible()
+                        expect(page.locator('.catalog-list li')).to_have_count(2)
+                        expect(page.locator('.catalog-list .catalog-pending')).to_have_count(1)
+                        expect(page.locator('.catalog-list li').first.locator('.catalog-page')).to_have_text('05')
+                        page.locator('.catalog-list li').first.locator('a').click()
+                        expect(page.locator('#b-title')).to_be_in_viewport()
+                        expect(page.locator('.catalog-source pre')).to_have_text('合成菜谱··05\n另一道菜··08')
                         expect(page.locator('.prose p').first).to_have_text('合成原料说明应随屏幕自然换行。')
                         assert '\n' not in page.locator('.prose p').first.text_content()
                         page.locator('#larger').click()
@@ -53,7 +59,10 @@ with tempfile.TemporaryDirectory() as tmp:
                         page.locator('#tocButton').click()
                         page.locator('#tocLinks a',has_text='制作步骤').click()
                         expect(page.locator('#b-steps')).to_be_in_viewport()
+                        expect(page.locator('#b-title .block-foot')).to_be_hidden()
+                        page.locator('#proofButton').click()
                         page.locator('#b-title .block-foot button').click()
+                        page.locator('#proofButton').click()
                         expect(page.locator('#bookmarkLinks a')).to_have_count(1)
                         page.locator('#content figure img').click()
                         expect(page.locator('#imageDialog')).to_be_visible()
@@ -71,3 +80,4 @@ with tempfile.TemporaryDirectory() as tmp:
         process.terminate()
         try:process.wait(timeout=10)
         except subprocess.TimeoutExpired:process.kill();process.wait()
+

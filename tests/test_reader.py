@@ -22,13 +22,17 @@ def synthetic_png():
     return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',width,height,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b'')
 
 
-def package(extra=None):
+def package(extra=None,catalog=False):
     book=dict(id=BID,title='合成阅读样书',page_count=1,revision=1,status='done',pages=[dict(page=1,blocks=[
         dict(id='title',kind='heading',page=1,level=1,reviewed=False,text='合成菜谱'),
         dict(id='body',kind='text',page=1,reviewed=False,text='合成原料说明\n应随屏幕自然换行。'),
         dict(id='image',kind='image',page=1,reviewed=False,src='photo.png',caption='合成配图'),
         dict(id='steps',kind='heading',page=1,level=2,reviewed=False,text='制作步骤'),
         dict(id='method',kind='text',page=1,reviewed=False,text='1.准备食材。\n2.按顺序处理。')])])
+    if catalog:
+        raw='合成菜谱··05\n另一道菜··08'
+        book['pages'][0]['blocks'].insert(0,dict(id='catalog',kind='text',page=1,role='catalog',text=raw,
+          catalog=dict(text_snapshot=raw,rows=[dict(title='合成菜谱',printed_page='05',target_id='title',raw='合成菜谱··05'),dict(title='另一道菜',printed_page='08',raw='另一道菜··08')])))
     data=io.BytesIO()
     with zipfile.ZipFile(data,'w') as z:
         z.writestr('book.json',json.dumps(book,ensure_ascii=False))
@@ -60,6 +64,12 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(book['pages'][0]['blocks'][1]['text'],'合成原料说明\n应随屏幕自然换行。')
         self.assertEqual(self.client.get('/api/books/'+BID+'/assets/photo.png').status_code,200)
         self.assertEqual(self.client.get('/api/search?q=合成原料').json()[0]['block_id'],'body')
+
+    def test_catalog_metadata_survives_import(self):
+        self.assertEqual(self.upload(package(catalog=True)).status_code,200)
+        block=self.client.get('/api/books/'+BID).json()['pages'][0]['blocks'][0]
+        self.assertEqual(block['catalog']['rows'][0]['target_id'],'title')
+        self.assertEqual(block['text'],'合成菜谱··05\n另一道菜··08')
 
     def test_progress_and_bookmarks(self):
         self.upload();state=dict(block_id='steps',bookmarks=['title'])
@@ -94,3 +104,4 @@ class ReaderTests(unittest.TestCase):
             self.assertEqual((d/'sync-token').stat().st_mode&0o777,0o600)
 
 if __name__=='__main__':unittest.main()
+
