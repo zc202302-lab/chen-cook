@@ -51,6 +51,20 @@ class ReaderTests(unittest.TestCase):
     def upload(self,content=None,key=TOKEN):
         return self.client.post('/api/import',files={'file':('book.zip',content or package())},headers={'x-sync-token':key})
 
+    def test_desktop_release_manifest_and_checksum(self):
+        import hashlib
+        manifest=self.client.get('/api/releases/latest')
+        self.assertEqual(manifest.status_code,200)
+        self.assertEqual(manifest.headers['cache-control'],'no-store')
+        info=manifest.json();self.assertEqual(info['version'],'0.3.1')
+        archive=self.client.get('/api/releases/'+info['url'])
+        self.assertEqual(archive.status_code,200)
+        self.assertEqual(hashlib.sha256(archive.content).hexdigest(),info['sha256'])
+        with zipfile.ZipFile(io.BytesIO(archive.content)) as z:
+            self.assertTrue({'app.py','engine.py','desktop.py','launcher.py','version.json','web/app.js'}.issubset(z.namelist()))
+            self.assertFalse(any(n.startswith(('data/','runtime/')) or n.lower().endswith('.pdf') for n in z.namelist()))
+        self.assertEqual(self.client.get('/api/releases/anything.txt').status_code,404)
+
     def test_health_and_role(self):
         self.assertEqual(self.client.get('/health').json()['revision'],'test-revision')
         self.assertEqual(self.client.get('/api/config').json()['mode'],'server')

@@ -97,7 +97,7 @@ $('desktopDrop').ondragover=e=>{e.preventDefault();$('desktopDrop').classList.ad
 $('desktopDrop').ondragleave=()=>$('desktopDrop').classList.remove('dragging');
 $('desktopDrop').ondrop=e=>{e.preventDefault();$('desktopDrop').classList.remove('dragging')};
 $('desktopDrop').onclick=()=>$('addDialog').showModal();
-$('updateButton').onclick=safe(async()=>{const info=await api('/api/update');$('updateVersion').textContent='当前版本：'+info.current;$('updateFeed').value=info.feed||'';$('updateStatus').textContent=info.feed?'点击下方按钮检查，有新版将自动下载、安装并重启。':'首次使用请填写固定的版本信息地址；发布地址尚未设置时无法在线更新。';$('updateDialog').showModal()});
+$('updateButton').onclick=safe(async()=>{const info=await api('/api/update');$('updateVersion').textContent='当前版本：'+info.current;$('updateFeed').value=info.feed||'';$('updateStatus').textContent=info.feed?'点击下方按钮检查，有新版将自动下载、安装并重启。':'首次使用请填写固定的版本信息地址；发布地址尚未设置时无法在线更新。';$('updateDialog').showModal();if(info.feed)$('checkUpdate').click()});
 $('closeUpdate').onclick=()=>{if(!updateBusy)$('updateDialog').close()};$('updateDialog').oncancel=e=>{if(updateBusy)e.preventDefault()};
 $('checkUpdate').onclick=safe(async()=>{
  if(updateBusy)return;

@@ -118,7 +118,8 @@ def create_app(data=None):
 
     @app.get('/api/releases/latest')
     def latest():
-        path=root/'releases'/'latest.json'
+        path=Path(__file__).parent/'releases'/'latest.json'
+        if not path.is_file():path=root/'releases'/'latest.json'
         if not path.is_file():raise HTTPException(404,'尚未发布桌面更新')
         return FileResponse(path,headers={'Cache-Control':'no-store'})
 
@@ -126,9 +127,11 @@ def create_app(data=None):
     def release(name:str):
         import re
         if not re.fullmatch(r'cook-reader-\d+\.\d+\.\d+\.zip',name):raise HTTPException(404)
-        path=root/'releases'/name
+        path=Path(__file__).parent/'releases'/name
+        if not path.is_file():path=root/'releases'/name
         if not path.is_file():raise HTTPException(404)
         return FileResponse(path)
 
     app.mount('/',StaticFiles(directory=Path(__file__).parent/'web',html=True),name='web')
     return app
+
