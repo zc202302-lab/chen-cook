@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory() as tmp:
             for name in ('chromium','webkit'):
                 browser=getattr(p,name).launch()
                 try:
-                    for width in (320,390,768,1440):
+                    for width in (320,390,768,1440,1920):
                         with httpx.Client(base_url=base) as client:
                             client.put('/api/progress/'+bid,json={'block_id':'','bookmarks':[]}).raise_for_status()
                         context=browser.new_context(viewport={'width':width,'height':900})
@@ -75,8 +75,41 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('#b-steps')).to_be_in_viewport()
                         expect(page.locator('#b-title .block-foot')).to_be_hidden()
                         page.locator('#proofButton').click()
-                        page.locator('#b-title .block-foot button').click()
+                        expect(page.locator('#comparison')).to_be_visible()
+                        expect(page.locator('#compareTitle')).to_have_text('识别原文对照')
+                        expect(page.locator('#compareBody pre').last).to_have_text(DETAIL_TEXT)
+                        expect(page.locator('#b-detail .reading-list li')).to_have_count(6)
+                        expect(page.locator('#chapterSelect')).to_have_value('1')
+                        expect(page.locator('#b-catalog')).to_be_hidden()
+                        expect(page.locator('#b-title .block-foot')).to_be_hidden()
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+                        if width>760:
+                            boxes=[page.locator(selector).bounding_box() for selector in ('#toc','#content','#comparison')]
+                            assert boxes[0]['width']<=180
+                            assert boxes[0]['x']+boxes[0]['width']<=boxes[1]['x']
+                            assert boxes[1]['x']+boxes[1]['width']<=boxes[2]['x']+1
+                            assert boxes[1]['width']>=260
+                        page.screenshot(path=str(artifacts/f'{name}-{width}-comparison.png'),full_page=True)
+                        page.locator('#compareFollow').uncheck()
+                        page.locator('#compareFollow').check()
+                        page.locator('#closeComparison').click()
+                        expect(page.locator('#comparison')).to_be_hidden()
+                        page.locator('#fontChoice').select_option('serif')
+                        assert page.evaluate('document.documentElement.dataset.readingFont')=='serif'
+                        page.locator('#fontChoice').select_option('sans')
+                        # Native local mode uses the same panel with a real image response.
+                        page.route('**/api/books/'+bid+'/original/1',lambda route:route.fulfill(status=200,content_type='image/svg+xml',body='<svg xmlns="http://www.w3.org/2000/svg" width="600" height="840"><rect width="600" height="840" fill="#ede7d9"/><text x="40" y="80" font-size="32">SYNTHETIC SOURCE PAGE</text></svg>'))
+                        page.evaluate("config.mode='local'")
                         page.locator('#proofButton').click()
+                        expect(page.locator('#compareTitle')).to_have_text('原 PDF 对照')
+                        expect(page.locator('#compareBody img')).to_be_visible()
+                        page.locator('#compareBody img').click()
+                        expect(page.locator('#imageDialog')).to_be_visible()
+                        page.locator('#closeImage').click()
+                        page.screenshot(path=str(artifacts/f'{name}-{width}-original.png'),full_page=True)
+                        page.locator('#closeComparison').click()
+                        page.evaluate("config.mode='server';progress.block_id='title'")
+                        page.locator('#readingBookmark').click()
                         expect(page.locator('#bookmarkLinks a')).to_have_count(1)
                         page.locator('#content figure img').click()
                         expect(page.locator('#imageDialog')).to_be_visible()

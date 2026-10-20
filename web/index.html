@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>灶间书房 · 烹饪图文阅读库</title><link rel="stylesheet" href="/style.css?v=0.4.1"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>灶间书房 · 烹饪图文阅读库</title><link rel="stylesheet" href="/style.css?v=0.5.0"></head>
 <body>
 <header><a class="brand" href="#">灶间<span>书房</span><small>COOKING LIBRARY</small></a><nav><button id="shelfNav">书架</button><button id="tasksNav" hidden>转换工作台</button><button id="updateButton" hidden>检查更新</button><button id="quitButton" hidden>退出程序</button></nav><span id="mode" class="pill"></span></header>
 <main id="home">
@@ -13,7 +13,8 @@
 <section id="reader" hidden>
  <div class="readerbar"><button id="back">← 书架</button><strong id="readingTitle"></strong><div><button id="tocButton">目录</button><button id="smaller">A−</button><button id="larger">A＋</button><button id="themeButton">护眼</button><button id="editButton" hidden>核对编辑</button></div></div>
  <div class="reading-layout"><aside id="toc"><div class="toc-head">内容目录<button id="closeToc">×</button></div><div id="tocLinks"></div><div class="toc-head">我的书签</div><div id="bookmarkLinks"></div><div id="localActions" hidden><button id="exportButton">导出阅读包</button><button id="syncButton">上传到网站</button></div></aside>
- <article id="content"></article></div>
+ <article id="content"></article>
+ <aside id="comparison" hidden aria-label="来源对照"><div class="compare-heading"><strong id="compareTitle">来源对照</strong><button id="closeComparison" aria-label="关闭对照">×</button></div><div class="compare-controls"><button id="comparePrevious" aria-label="上一原页">‹</button><label>第 <input id="comparePage" type="number" min="1" value="1" aria-label="对照页码"> 页 <span id="compareTotal"></span></label><button id="compareNext" aria-label="下一原页">›</button></div><label class="compare-follow"><input id="compareFollow" type="checkbox" checked> 跟随正文</label><p id="compareHint"></p><div id="compareBody"></div></aside></div>
 </section>
 <dialog id="addDialog"><form method="dialog"><h2>添加本地 PDF</h2><p class="muted">原 PDF 留在电脑。首次识别可能需要较长时间。</p><button type="button" id="pickFiles" class="primary">选择文件（可多选）</button><p class="muted">也可以粘贴完整路径，每行一个；不要加引号。</p><textarea id="paths" rows="4" placeholder="D:\菜谱\我的菜谱.pdf"></textarea><label>试转页码（留空处理整本）<input id="pageSpec" placeholder="例如：4,6-8"></label><div class="dialog-actions"><button>取消</button><button type="button" id="startJobs" class="primary">开始转换</button></div></form></dialog>
 <dialog id="importDialog"><form method="dialog"><h2>导入阅读包</h2><p class="muted">选择电脑转换工作台导出的 ZIP，不接受 PDF。</p><input id="importFile" type="file" accept=".zip"><label id="tokenLabel">同步密钥<input id="importToken" type="password" autocomplete="off"></label><div class="dialog-actions"><button>取消</button><button type="button" id="doImport" class="primary">导入</button></div></form></dialog>
@@ -21,5 +22,5 @@
 <dialog id="originalDialog"><div class="section-bar"><h2 id="originalTitle">对照原页</h2><button id="closeOriginal">关闭</button></div><p id="cropHint" class="muted">拖动框选图片区域，点击“添加裁图”。核对结束后关闭窗口。</p><div id="originalWrap"><img id="originalImage" alt="本地 PDF 原页"><div id="cropBox" hidden></div></div><div class="dialog-actions"><button id="addCrop" class="primary">添加裁图</button></div></dialog>
 <dialog id="imageDialog"><button id="closeImage">关闭</button><img id="largeImage" alt="放大图片"></dialog>
 <dialog id="updateDialog"><h2>检查更新</h2><p id="updateVersion" class="muted"></p><p class="muted">仅在你点击按钮时检查。发现新版本后自动下载、安装并重启，书库和转换进度会保留。</p><details><summary>更新设置</summary><label>版本信息地址（HTTPS）<input id="updateFeed" placeholder="https://cook.ziboxiaozhushou.cn/api/releases/latest"></label></details><p id="updateStatus" role="status"></p><div class="dialog-actions"><button id="closeUpdate">关闭</button><button id="checkUpdate" class="primary">检查并自动更新</button></div></dialog>
-<div id="toast" role="status" hidden></div><script src="/app.js?v=0.4.1"></script>
+<div id="toast" role="status" hidden></div><script src="/app.js?v=0.5.0"></script>
 </body></html>

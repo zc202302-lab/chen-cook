@@ -57,7 +57,7 @@ class ReaderTests(unittest.TestCase):
         manifest=self.client.get('/api/releases/latest')
         self.assertEqual(manifest.status_code,200)
         self.assertEqual(manifest.headers['cache-control'],'no-store')
-        info=manifest.json();self.assertEqual(info['version'],'0.4.1')
+        info=manifest.json();self.assertEqual(info['version'],'0.5.0')
         archive=self.client.get('/api/releases/'+info['url'])
         self.assertEqual(archive.status_code,200)
         self.assertEqual(hashlib.sha256(archive.content).hexdigest(),info['sha256'])
@@ -88,8 +88,8 @@ class ReaderTests(unittest.TestCase):
     def test_reader_assets_revalidate_after_upgrade(self):
         response=self.client.get('/')
         self.assertEqual(response.headers['cache-control'],'no-cache')
-        self.assertIn('/app.js?v=0.4.1',response.text)
-        for path in ('/app.js?v=0.4.1','/style.css?v=0.4.1'):
+        self.assertIn('/app.js?v=0.5.0',response.text)
+        for path in ('/app.js?v=0.5.0','/style.css?v=0.5.0'):
             self.assertEqual(self.client.get(path).headers['cache-control'],'no-cache')
 
     def test_health_and_role(self):
