@@ -67,6 +67,7 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('#b-detail .reading-list li')).to_have_count(6)
                         expect(page.locator('#b-detail .recipe-measure',has_text='2.5升')).to_have_count(1)
                         expect(page.locator('#b-detail .recipe-measure',has_text='0.5%')).to_have_count(1)
+                        assert page.locator('#b-detail .recipe-measure').first.evaluate("e=>getComputedStyle(e).whiteSpace")=='nowrap'
                         assert ''.join(page.locator('#b-detail .prose').text_content().split())==''.join(DETAIL_TEXT.split())
                         page.locator('#larger').click()
                         assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--font').trim()")=='22px'
@@ -90,6 +91,22 @@ with tempfile.TemporaryDirectory() as tmp:
                             assert boxes[1]['x']+boxes[1]['width']<=boxes[2]['x']+1
                             assert boxes[1]['width']>=260
                         page.screenshot(path=str(artifacts/f'{name}-{width}-comparison.png'),full_page=True)
+                        # Add a synthetic second page in memory, then exercise actual scroll-follow.
+                        page.evaluate("book.page_count=2;book.pages.push({page:2,blocks:[{id:'follow-page',kind:'text',page:2,text:'第二页原文。'.repeat(100)}]});render();navigateToBlock('steps',false)")
+                        page.locator('#closeComparison').click()
+                        page.locator('#proofButton').click()
+                        page.locator('#compareNext').click()
+                        expect(page.locator('#comparePage')).to_have_value('2')
+                        expect(page.locator('#compareBody pre')).to_have_text('第二页原文。'*100)
+                        expect(page.locator('#compareFollow')).not_to_be_checked()
+                        page.locator('#comparePrevious').click()
+                        expect(page.locator('#comparePage')).to_have_value('1')
+                        page.locator('#compareFollow').check()
+                        page.evaluate("navigateToBlock('follow-page',false)")
+                        expect(page.locator('#comparePage')).to_have_value('2')
+                        page.evaluate("navigateToBlock('steps',false)")
+                        expect(page.locator('#comparePage')).to_have_value('1')
+                        page.evaluate("book.pages.pop();book.page_count=1;render();navigateToBlock('steps',false)")
                         page.locator('#compareFollow').uncheck()
                         page.locator('#compareFollow').check()
                         page.locator('#closeComparison').click()
