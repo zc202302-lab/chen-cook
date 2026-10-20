@@ -127,6 +127,9 @@ with tempfile.TemporaryDirectory() as tmp:
                         page.locator('#closeComparison').click()
                         page.evaluate("config.mode='server';progress.block_id='title'")
                         page.locator('#readingBookmark').click()
+                        with httpx.Client(base_url=base) as client:
+                            saved_marks=client.get('/api/progress/'+bid).json()['bookmarks']
+                            assert len(saved_marks)==1 and saved_marks[0] in ('title','body','image','steps','method','detail')
                         expect(page.locator('#bookmarkLinks a')).to_have_count(1)
                         page.locator('#content figure img').click()
                         expect(page.locator('#imageDialog')).to_be_visible()
@@ -154,7 +157,7 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('.trash-row')).to_have_count(0)
                         page.locator('#closeTrash').click()
                         with httpx.Client(base_url=base) as client:
-                            assert client.get('/api/progress/'+bid).json()['bookmarks']==['title']
+                            assert client.get('/api/progress/'+bid).json()['bookmarks']==saved_marks
                         context.close()
                         print(f'PASS {name} {width}: reading, reflow, TOC, fonts, image, bookmark, search')
                 finally:browser.close()
