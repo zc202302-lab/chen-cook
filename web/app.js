@@ -54,6 +54,71 @@ function readingParagraphs(text){
  }
  flush();return paragraphs;
 }
+// A presentation-only parse. Each segment is a slice of recognized text.
+function numberedReadingSegments(text){
+ const matches=[...text.matchAll(/\d{1,3}[.．、](?!\d)/gu)].filter(m=>{
+  const before=m.index?text[m.index-1]:'';
+  return !m.index||/[\s。；;：:）)]/u.test(before);
+ });
+ const accepted=[];
+ for(const match of matches){
+  const value=parseInt(match[0],10);
+  if(!accepted.length){if(value===1||match.index===0)accepted.push(match)}
+  else if(value===parseInt(accepted[accepted.length-1][0],10)+1)accepted.push(match);
+ }
+ if(!accepted.length||accepted.length===1&&accepted[0].index>0)return [{kind:'paragraph',text}];
+ const result=[];
+ if(accepted[0].index)result.push({kind:'paragraph',text:text.slice(0,accepted[0].index)});
+ result.push({kind:'list',items:accepted.map((m,i)=>({marker:m[0],text:text.slice(m.index+m[0].length,i+1<accepted.length?accepted[i+1].index:text.length)}))});
+ return result;
+}
+function recipeHeading(chunk){
+ const step=chunk.match(/^步骤\s*\d+/u);
+ if(step){
+  const rest=chunk.slice(step[0].length);let cut=0;
+  const firstItem=/(?<!\d)1[.．、](?!\d)/u.exec(rest);
+  if(firstItem&&firstItem.index<=24&&!/[。；;]/u.test(rest.slice(0,firstItem.index)))cut=firstItem.index;
+  else if(!/^(?:将|把|取|先|用|在)/u.test(rest.trimStart())){
+   const title=/^(.{2,14}?)(?=(?:将|把|取|先|锅中|锅内|在锅|用)[^\s])/u.exec(rest);
+   if(title&&!/[。；;：:]/u.test(title[1]))cut=title[1].length;
+  }
+  return {heading:chunk.slice(0,step[0].length+cut),body:chunk.slice(step[0].length+cut)};
+ }
+ const label=/^(?:应用方法|使用方法|制作方法|制作步骤|制作关键|关键提示|使用贴士|技术要点|(?:原料|主料|辅料|调料|配料)[：:]|制作[^\s，。；：:\d]{0,4}?汁)[：:]?/u.exec(chunk);
+ return label?{heading:label[0],body:chunk.slice(label[0].length)}:null;
+}
+function recipeReadingSegments(text){
+ const result=[];
+ const append=segment=>{
+  if(segment.kind==='paragraph'&&!segment.text.trim())return;
+  const last=result[result.length-1];
+  if(segment.kind==='list'&&last?.kind==='list'&&parseInt(segment.items[0].marker,10)===parseInt(last.items[last.items.length-1].marker,10)+1)last.items.push(...segment.items);
+  else result.push(segment);
+ };
+ for(const paragraph of readingParagraphs(text)){
+  const headers=[...paragraph.matchAll(/步骤\s*\d+|应用方法|使用方法|制作方法|制作步骤|制作关键|关键提示|使用贴士|技术要点|(?:原料|主料|辅料|调料|配料)[：:]|制作[^\s，。；：:\d]{0,4}?汁/gu)]
+   .filter(m=>!m.index||/[\s。；;：:]/u.test(paragraph[m.index-1]));
+  if(!headers.length){numberedReadingSegments(paragraph).forEach(append);continue}
+  if(headers[0].index)numberedReadingSegments(paragraph.slice(0,headers[0].index)).forEach(append);
+  headers.forEach((m,i)=>{
+   const chunk=paragraph.slice(m.index,i+1<headers.length?headers[i+1].index:paragraph.length);
+   const section=recipeHeading(chunk);
+   if(section){append({kind:'heading',text:section.heading});numberedReadingSegments(section.body).forEach(append)}
+   else numberedReadingSegments(chunk).forEach(append);
+  });
+ }
+ return result;
+}
+function appendReadingText(node,text,emphasize=false){
+ if(!emphasize){node.append(document.createTextNode(text));return}
+ const pattern=/\d+(?:[.．]\d+)?\s*(?:千克|公斤|毫升|分钟|小时|克|升|秒|℃|%|个|根|块)/gu;
+ let offset=0;
+ for(const match of text.matchAll(pattern)){
+  node.append(document.createTextNode(text.slice(offset,match.index)),el('span','recipe-measure',match[0]));offset=match.index+match[0].length;
+ }
+ node.append(document.createTextNode(text.slice(offset)));
+}
+
 function readingText(block){
  const node=el('div','prose');
  const catalog=catalogFor(block);
@@ -61,7 +126,19 @@ function readingText(block){
   const rows=el('ol','catalog-list');for(const row of catalog.rows)rows.append(catalogItem(row));node.append(rows);
   const details=el('details','catalog-source');details.append(el('summary','','查看识别原文'));details.append(el('pre','',block.text));node.append(details);return node;
  }
- for(const paragraph of readingParagraphs(block.text))node.append(el('p','',paragraph));
+ const segments=proofing?readingParagraphs(block.text).map(text=>({kind:'paragraph',text})):recipeReadingSegments(block.text);
+ const structured=segments.some(s=>s.kind!=='paragraph');node.dataset.structured=String(structured);
+ for(const segment of segments){
+  if(segment.kind==='heading'){
+   const heading=el('h4','reading-subtitle');const step=/^(步骤\s*\d+)(.*)$/u.exec(segment.text);
+   if(step){heading.append(el('span','step-number',step[1]),el('span','',step[2]))}else heading.textContent=segment.text;
+   node.append(heading);
+  }else if(segment.kind==='list'){
+   const list=el('ol','reading-list');list.setAttribute('aria-label','原文编号条目');list.start=parseInt(segment.items[0].marker,10);
+   for(const item of segment.items){const row=el('li');row.value=parseInt(item.marker,10);const body=el('p');appendReadingText(body,item.text,structured);row.append(el('span','reading-marker',item.marker),body);list.append(row)}
+   node.append(list);
+  }else{const paragraph=el('p');appendReadingText(paragraph,segment.text,structured);node.append(paragraph)}
+ }
  return node;
 }
 function render(){document.body.classList.toggle('proof-mode',proofing||editing);$('content').classList.add('book-edition');renderToc();const content=$('content');content.replaceChildren();content.append(el('h1','',book.title));content.append(el('div','notice','自动转换初稿：未核对标记表示文字、顺序或图文归属尚未确认。目录条目会与正文标题匹配；待定位条目不猜测跳转。可在电脑工作台整理结构并核对。'));if(editing){const bar=el('div','save-strip');bar.append(el('span','','修改后请保存，原文不会被自动润色。'));let btn=el('button','primary','保存修改');btn.onclick=safe(save);bar.append(btn);content.append(bar);const title=el('input');title.value=book.title;title.setAttribute('aria-label','书名');title.oninput=()=>book.title=title.value;title.style.width='100%';content.append(title)}for(const pg of book.pages){if(!pg.blocks.length)continue;for(const b of pg.blocks){const wrap=el('section',editing?'block editbox':'block');wrap.id='b-'+b.id;wrap.dataset.block=b.id;wrap.dataset.role=b.role||b.kind;if(editing){const controls=el('div','edit-controls');const kind=el('select');for(const [value,text] of [['text','正文'],['heading','目录标题'],['image','图片']]){if((b.kind==='image')!==(value==='image'))continue;let o=el('option','',text);o.value=value;kind.append(o)}kind.value=b.kind;kind.onchange=()=>{b.kind=kind.value;delete b.role;delete b.catalog;render()};controls.append(kind);if(b.kind==='heading'){const level=el('select');for(let i=1;i<=3;i++){const o=el('option','','目录 '+i+' 级');o.value=i;level.append(o)}level.value=b.level||2;level.onchange=()=>{b.level=+level.value;renderToc()};controls.append(level)}const check=el('input');check.type='checkbox';check.checked=!!b.reviewed;check.onchange=()=>b.reviewed=check.checked;let label=el('label','','已对照核对 ');label.prepend(check);controls.append(label);for(const [label,delta] of [['↑',-1],['↓',1]]){const btn=el('button','',label);btn.title='移动内容块（可跨页）';btn.onclick=()=>move(b.id,delta);controls.append(btn)}const del=el('button','','删除');del.onclick=()=>{if(confirm('确认删除此内容块？')){pg.blocks=pg.blocks.filter(x=>x.id!==b.id);render()}};controls.append(del);wrap.append(controls);if(b.kind==='image'){const img=el('img');img.src=asset(b.src);img.alt=b.caption||'待核对裁图';wrap.append(img);const caption=el('textarea');caption.value=b.caption||'';caption.placeholder='原文图注（不要新增原文没有的说明）';caption.oninput=()=>b.caption=caption.value;wrap.append(caption)}else{const text=el('textarea');text.value=b.text;text.oninput=()=>{b.text=text.value;renderToc()};wrap.append(text);const split=el('button','','在光标处拆分');split.onclick=()=>{const pos=text.selectionStart;if(pos<=0||pos>=b.text.length)return;const n={...b,id:crypto.randomUUID().replaceAll('-','').slice(0,16),text:b.text.slice(pos),reviewed:false};b.text=b.text.slice(0,pos);pg.blocks.splice(pg.blocks.indexOf(b)+1,0,n);render()};wrap.append(split)}}else if(b.kind==='image'){const figure=el('figure');const img=el('img');img.src=asset(b.src);img.alt=b.caption||'菜谱配图';img.loading='lazy';img.onclick=()=>{$('largeImage').src=img.src;$('imageDialog').showModal()};figure.append(img);if(b.caption)figure.append(el('figcaption','',b.caption));wrap.append(figure)}else if(catalogFor(b))wrap.append(readingText(b));else if(b.role==='recipe'||b.role==='subheading')wrap.append(el(b.role==='recipe'?'h2':'h3','',b.text));else if(b.kind==='text')wrap.append(readingText(b));else wrap.append(el(Number(b.level||2)===3?'h3':'h2','',b.text));const foot=el('div','block-foot');foot.append(el('span','',`来源第 ${b.page} 页`));if(!b.reviewed)foot.append(el('span','pending','待核对'));if(config.mode==='local'){const original=el('button','','对照原页 / 裁图');original.onclick=safe(()=>showOriginal(b.page));foot.append(original)}if(!editing){const mark=el('button','',(progress.bookmarks||[]).includes(b.id)?'★ 已收藏':'☆ 书签');mark.onclick=safe(async()=>{const marks=new Set(progress.bookmarks||[]);marks.has(b.id)?marks.delete(b.id):marks.add(b.id);progress.bookmarks=[...marks];await persistProgress();renderToc();mark.textContent=marks.has(b.id)?'★ 已收藏':'☆ 书签'});foot.append(mark)}wrap.append(foot);content.append(wrap)}}connectReadingFlow();buildChapterNavigation();if(!editing){observer?.disconnect();observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){progress.block_id=e.target.dataset.block;clearTimeout(window.progressTimer);window.progressTimer=setTimeout(()=>persistProgress().catch(()=>{}),800)}},{rootMargin:'-10% 0px -65% 0px'});content.querySelectorAll('.block').forEach(n=>observer.observe(n))}}
@@ -195,6 +272,7 @@ function connectReadingFlow(){
   if(block.role==='page_furniture')continue;
   const node=document.getElementById('b-'+block.id);
   if(block.kind!=='text'||catalogFor(block)||['recipe','subheading','chapter'].includes(block.role)){previous=null;target=null;continue}
+  if(node?.querySelector('.prose[data-structured="true"]')){previous=null;target=null;continue}
   const paragraphs=node?.querySelectorAll('.prose p');
   if(!paragraphs?.length){previous=null;target=null;continue}
   if(previous&&target&&!label.test(block.text.trim())&&!/[。！？!?：:]$/.test(previous.text.trim())&&block.page-previous.page>=0&&block.page-previous.page<=1){

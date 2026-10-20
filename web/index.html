@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>灶间书房 · 烹饪图文阅读库</title><link rel="stylesheet" href="/style.css"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>灶间书房 · 烹饪图文阅读库</title><link rel="stylesheet" href="/style.css?v=0.4.1"></head>
 <body>
 <header><a class="brand" href="#">灶间<span>书房</span><small>COOKING LIBRARY</small></a><nav><button id="shelfNav">书架</button><button id="tasksNav" hidden>转换工作台</button><button id="updateButton" hidden>检查更新</button><button id="quitButton" hidden>退出程序</button></nav><span id="mode" class="pill"></span></header>
 <main id="home">
@@ -21,5 +21,5 @@
 <dialog id="originalDialog"><div class="section-bar"><h2 id="originalTitle">对照原页</h2><button id="closeOriginal">关闭</button></div><p id="cropHint" class="muted">拖动框选图片区域，点击“添加裁图”。核对结束后关闭窗口。</p><div id="originalWrap"><img id="originalImage" alt="本地 PDF 原页"><div id="cropBox" hidden></div></div><div class="dialog-actions"><button id="addCrop" class="primary">添加裁图</button></div></dialog>
 <dialog id="imageDialog"><button id="closeImage">关闭</button><img id="largeImage" alt="放大图片"></dialog>
 <dialog id="updateDialog"><h2>检查更新</h2><p id="updateVersion" class="muted"></p><p class="muted">仅在你点击按钮时检查。发现新版本后自动下载、安装并重启，书库和转换进度会保留。</p><details><summary>更新设置</summary><label>版本信息地址（HTTPS）<input id="updateFeed" placeholder="https://cook.ziboxiaozhushou.cn/api/releases/latest"></label></details><p id="updateStatus" role="status"></p><div class="dialog-actions"><button id="closeUpdate">关闭</button><button id="checkUpdate" class="primary">检查并自动更新</button></div></dialog>
-<div id="toast" role="status" hidden></div><script src="/app.js"></script>
+<div id="toast" role="status" hidden></div><script src="/app.js?v=0.4.1"></script>
 </body></html>

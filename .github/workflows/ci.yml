@@ -21,6 +21,7 @@ jobs:
       - run: pip install -r requirements.txt playwright
       - run: python -m compileall -q app.py server.py storage.py scripts tests
       - run: node --check web/app.js
+      - run: node tests/test_readability.js
       - run: bash -n scripts/deploy.sh
       - run: python -m unittest discover -s tests -p 'test_*.py' -v
       - run: python -m playwright install --with-deps chromium webkit
@@ -31,3 +32,4 @@ jobs:
           name: reader-browser-screenshots
           path: artifacts/*.png
           if-no-files-found: ignore
+

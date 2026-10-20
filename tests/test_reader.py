@@ -14,6 +14,7 @@ from app import create_app
 
 BID='a'*24
 TOKEN='synthetic-test-token'
+DETAIL_TEXT='步骤1熬制汤料1.取骨料1200克，加入清水2.5升。2.加入盐12克，煮30分钟。3.过滤汤料。\n步骤2调制卤水将香料加入汤中，煮15分钟。\n应用方法1.用0.5%的盐水处理食材。2.洗净后焯水。3.煮熟捞出。制作味汁取红油20克，加入酱油5克。'
 
 def synthetic_png():
     width,height=400,220
@@ -28,7 +29,7 @@ def package(extra=None,catalog=False):
         dict(id='body',kind='text',page=1,reviewed=False,text='合成原料说明\n应随屏幕自然换行。'),
         dict(id='image',kind='image',page=1,reviewed=False,src='photo.png',caption='合成配图'),
         dict(id='steps',kind='heading',page=1,level=2,reviewed=False,text='制作步骤'),
-        dict(id='method',kind='text',page=1,reviewed=False,text='1.准备食材。\n2.按顺序处理。')])])
+        dict(id='method',kind='text',page=1,reviewed=False,text='1.准备食材。\n2.按顺序处理。'),dict(id='detail',kind='text',page=1,reviewed=False,text=DETAIL_TEXT)])])
     if catalog:
         raw='合成菜谱··05\n另一道菜··08'
         book['pages'][0]['blocks'].insert(0,dict(id='catalog',kind='text',page=1,role='catalog',text=raw,
@@ -56,7 +57,7 @@ class ReaderTests(unittest.TestCase):
         manifest=self.client.get('/api/releases/latest')
         self.assertEqual(manifest.status_code,200)
         self.assertEqual(manifest.headers['cache-control'],'no-store')
-        info=manifest.json();self.assertEqual(info['version'],'0.4.0')
+        info=manifest.json();self.assertEqual(info['version'],'0.4.1')
         archive=self.client.get('/api/releases/'+info['url'])
         self.assertEqual(archive.status_code,200)
         self.assertEqual(hashlib.sha256(archive.content).hexdigest(),info['sha256'])
@@ -83,6 +84,13 @@ class ReaderTests(unittest.TestCase):
         self.upload()
         self.assertEqual(self.client.delete('/api/books/'+BID,headers={'x-sync-token':TOKEN,'origin':'https://untrusted.invalid'}).status_code,403)
         self.assertEqual(len(self.client.get('/api/books').json()),1)
+
+    def test_reader_assets_revalidate_after_upgrade(self):
+        response=self.client.get('/')
+        self.assertEqual(response.headers['cache-control'],'no-cache')
+        self.assertIn('/app.js?v=0.4.1',response.text)
+        for path in ('/app.js?v=0.4.1','/style.css?v=0.4.1'):
+            self.assertEqual(self.client.get(path).headers['cache-control'],'no-cache')
 
     def test_health_and_role(self):
         self.assertEqual(self.client.get('/health').json()['revision'],'test-revision')

@@ -44,6 +44,8 @@ def create_app(data=None):
             if origin and urlsplit(origin).netloc.lower()!=request.headers.get('host','').lower():
                 return JSONResponse({'detail':'不接受跨站写入请求'},403)
         result=await call_next(request)
+        if request.url.path in ('/','/index.html','/app.js','/style.css'):
+            result.headers['Cache-Control']='no-cache'
         result.headers['X-Content-Type-Options']='nosniff'
         result.headers['Referrer-Policy']='same-origin'
         result.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"

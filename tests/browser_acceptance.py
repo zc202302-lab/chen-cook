@@ -13,7 +13,7 @@ from playwright.sync_api import sync_playwright,expect
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root))
 sys.path.insert(0,str(root/'tests'))
-from test_reader import package,TOKEN
+from test_reader import package,TOKEN,DETAIL_TEXT
 
 artifacts=root/'artifacts';artifacts.mkdir(exist_ok=True)
 with tempfile.TemporaryDirectory() as tmp:
@@ -61,6 +61,13 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('.catalog-source pre')).to_have_text('合成菜谱··05\n另一道菜··08')
                         expect(page.locator('.prose p').first).to_have_text('合成原料说明应随屏幕自然换行。')
                         assert '\n' not in page.locator('.prose p').first.text_content()
+                        expect(page.locator('#b-detail .reading-subtitle')).to_have_count(4)
+                        expect(page.locator('#b-detail .reading-subtitle').first).to_have_text('步骤1熬制汤料')
+                        expect(page.locator('#b-detail .reading-list')).to_have_count(2)
+                        expect(page.locator('#b-detail .reading-list li')).to_have_count(6)
+                        expect(page.locator('#b-detail .recipe-measure',has_text='2.5升')).to_have_count(1)
+                        expect(page.locator('#b-detail .recipe-measure',has_text='0.5%')).to_have_count(1)
+                        assert ''.join(page.locator('#b-detail .prose').text_content().split())==''.join(DETAIL_TEXT.split())
                         page.locator('#larger').click()
                         assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--font').trim()")=='22px'
                         page.locator('#tocButton').click()
@@ -75,7 +82,10 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('#imageDialog')).to_be_visible()
                         page.locator('#closeImage').click()
                         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+                        page.locator('#b-detail').scroll_into_view_if_needed()
                         page.screenshot(path=str(artifacts/f'{name}-{width}.png'),full_page=True)
+                        with httpx.Client(base_url=base) as client:
+                            assert client.get('/api/books/'+bid).json()['pages'][0]['blocks'][-1]['text']==DETAIL_TEXT
                         page.locator('#back').click()
                         page.locator('#search').fill('合成原料')
                         page.locator('#searchButton').click()
