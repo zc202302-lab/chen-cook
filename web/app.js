@@ -361,3 +361,15 @@ for(const [value,label] of [['sans','黑体'],['serif','宋体']]){const option=
 fontChoice.value=localStorage.getItem('readingFont')==='serif'?'serif':'sans';
 function applyReadingFont(){document.documentElement.dataset.readingFont=fontChoice.value;localStorage.setItem('readingFont',fontChoice.value)}
 fontChoice.onchange=applyReadingFont;applyReadingFont();$('smaller').before(fontChoice);
+
+// Menus can wrap on smaller screens and in the desktop workbench.
+function measureMenus(){
+ for(const [node,property] of [[document.querySelector('body>header'),'--app-menu-height'],[document.querySelector('.readerbar'),'--reader-menu-height']]){
+  const height=Math.ceil(node.getBoundingClientRect().height);
+  if(height>0)document.documentElement.style.setProperty(property,height+'px');
+ }
+}
+const menuResizeObserver=new ResizeObserver(measureMenus);
+menuResizeObserver.observe(document.querySelector('body>header'));
+menuResizeObserver.observe(document.querySelector('.readerbar'));
+measureMenus();

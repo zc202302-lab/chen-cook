@@ -39,3 +39,16 @@ article.book-edition{max-width:850px;padding:56px clamp(28px,4vw,64px) 80px;bord
 #compareHint{font-size:12px;line-height:1.7;color:var(--muted);margin:8px 0 12px}#compareBody{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;background:var(--card)}#compareBody img{display:block;width:100%;height:auto}.compare-original{cursor:zoom-in}.compare-status{font:13px/1.8 system-ui;padding:16px}.compare-source{padding:16px;border-bottom:1px solid var(--line)}.compare-source pre{white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.85 var(--reading-face);margin:0}.compare-source p{font:13px/1.7 var(--reading-face)}
 @media(min-width:761px) and (max-width:1100px){.with-comparison .reading-layout{grid-template-columns:128px minmax(0,1fr) minmax(250px,.8fr);gap:12px;padding:16px 12px}.with-comparison article.book-edition{padding:30px 22px 65px}.reading-layout{grid-template-columns:156px minmax(0,1fr);gap:16px;padding:18px}.readerbar{gap:8px;padding:10px 12px}.readerbar strong{max-width:180px}.readerbar button{padding:7px 9px}}
 @media(max-width:760px){.readerbar{padding:8px;min-height:0}.readerbar>div{justify-content:flex-end;gap:4px}.readerbar select{font-size:12px;padding:4px}.reading-layout,.with-comparison .reading-layout{display:block;padding:0}.reading-layout #toc{position:fixed;top:0;max-height:100dvh;padding:24px 18px;z-index:20}.reading-layout #toc a{font-size:14px}article.book-edition,.with-comparison article.book-edition{padding:32px 22px 70px}.book-edition .prose{line-height:1.85;letter-spacing:.01em}.book-edition .block{scroll-margin-top:155px}#comparison{position:fixed;display:flex;left:auto;right:0;top:0;bottom:0;width:min(460px,94vw);height:100dvh;max-height:100dvh;z-index:24;padding:16px;border-radius:0;box-shadow:-12px 0 40px #18271c33}.compare-heading{font-size:15px}.compare-source pre{font-size:16px}}
+
+/* Keep menus pinned to the window; measure their actual wrapped height. */
+:root{--app-menu-height:90px;--reader-menu-height:62px}
+body{padding-top:var(--app-menu-height)}
+body:has(#reader:not([hidden])){padding-top:0}
+body>header{position:fixed;inset:0 0 auto;z-index:10;height:auto;min-height:90px;background:var(--paper)}
+#reader{padding-top:var(--reader-menu-height)}
+.readerbar{position:fixed;inset:0 0 auto;width:100%;z-index:10;background:var(--paper)}
+.book-edition .block{scroll-margin-top:calc(var(--reader-menu-height) + 24px)}
+.save-strip{top:calc(var(--reader-menu-height) + 8px)}
+#tasks{scroll-margin-top:calc(var(--app-menu-height) + 20px)}
+@media(min-width:761px){.reading-layout #toc,#comparison{top:calc(var(--reader-menu-height) + 18px);max-height:calc(100dvh - var(--reader-menu-height) - 36px)}}
+@media(max-width:760px){body>header{min-height:73px;padding:10px 18px;flex-wrap:wrap;gap:8px}body>header nav{flex-wrap:wrap;justify-content:flex-end;gap:2px}.book-edition .block{scroll-margin-top:calc(var(--reader-menu-height) + 20px)}}

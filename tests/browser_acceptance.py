@@ -44,8 +44,19 @@ with tempfile.TemporaryDirectory() as tmp:
                         expect(page.locator('.book')).to_have_count(1)
                         for button in ('addButton','tasksNav','editButton','updateButton','quitButton'):
                             expect(page.locator('#'+button)).to_be_hidden()
+                        # Workbench menus stay at the viewport top even when tasks are long.
+                        page.evaluate("document.querySelector('#books').style.minHeight='1200px'")
+                        page.evaluate('window.scrollTo(0,400)')
+                        assert abs(page.locator('body>header').bounding_box()['y'])<=1
+                        assert page.locator('body>header').evaluate("e=>getComputedStyle(e).position")=='fixed'
+                        page.evaluate("document.querySelector('#books').style.minHeight='';window.scrollTo(0,0)")
                         page.locator('.book').click()
                         expect(page.locator('#reader')).to_be_visible()
+                        page.wait_for_function("Math.abs(document.querySelector('.readerbar').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--reader-menu-height')))<1.1")
+                        assert abs(page.locator('.readerbar').bounding_box()['y'])<=1
+                        assert page.locator('.readerbar').evaluate("e=>getComputedStyle(e).position")=='fixed'
+                        page.evaluate('window.scrollTo(0,0)')
+                        assert page.locator('#content').bounding_box()['y']>=page.locator('.readerbar').bounding_box()['height']-1
                         expect(page.locator('.catalog-list li')).to_have_count(2)
                         expect(page.locator('.catalog-list .catalog-pending')).to_have_count(1)
                         expect(page.locator('.catalog-list li').first.locator('.catalog-page')).to_have_text('05')
@@ -74,6 +85,8 @@ with tempfile.TemporaryDirectory() as tmp:
                         page.locator('#tocButton').click()
                         page.locator('#tocLinks a',has_text='制作步骤').click()
                         expect(page.locator('#b-steps')).to_be_in_viewport()
+                        page.wait_for_function("document.querySelector('#b-steps').getBoundingClientRect().top>=document.querySelector('.readerbar').getBoundingClientRect().bottom-1")
+                        assert abs(page.locator('.readerbar').bounding_box()['y'])<=1
                         expect(page.locator('#b-title .block-foot')).to_be_hidden()
                         page.locator('#proofButton').click()
                         expect(page.locator('#comparison')).to_be_visible()
