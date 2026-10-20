@@ -29,6 +29,8 @@ class AiLayoutTests(unittest.TestCase):
   self.assertEqual(result['blocks'][0]['text'],'合成菜谱');self.assertEqual(result['blocks'][2]['text'],'原料：盐2.5克。');self.assertEqual(result['blocks'][1]['caption'],'原图注');self.assertEqual(original,untouched)
   for groups in [[{'ids':['t0'],'kind':'text'}],[{'ids':['t0','t0'],'kind':'text'}],[{'ids':['t0','t1','i0'],'kind':'text'}]]:
    with self.assertRaises(ValueError):engine.ai_layout_apply(original,groups)
+  original['blocks'][0]['text']='成合菜谱\n原料：盐2.5克。'
+  with self.assertRaises(ValueError):engine.ai_layout_units(original)
   original['blocks'][0]['text']='已人工改字'
   with self.assertRaises(ValueError):engine.ai_layout_units(original)
  def test_payload_has_no_key_and_bounded_generation(self):
