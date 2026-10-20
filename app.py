@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from storage import ASSET, ID, LOCK, atomic_json, import_book, public_book, read_json
+from storage import ASSET, ID, LOCK, atomic_json, import_book, public_book, read_json, trash_book, list_trash, restore_book, purge_book
 
 
 def create_app(data=None):
@@ -65,6 +65,38 @@ def create_app(data=None):
                 cover=next((x['src'] for x in blocks if x['kind']=='image'),None)))
         return result
 
+    @app.delete('/api/books/{bid}')
+    def delete_converted_book(bid:str,request:Request):
+        if not hmac.compare_digest(request.headers.get('x-sync-token',''),token):raise HTTPException(403,'请输入网站同步密钥后管理书库')
+        directory(bid)
+        with LOCK:
+            
+            try:result=trash_book(root,bid)
+            except ValueError as exc:raise HTTPException(409,str(exc))
+            
+        return result
+
+    @app.get('/api/trash')
+    def deleted_books(request:Request):
+        if not hmac.compare_digest(request.headers.get('x-sync-token',''),token):raise HTTPException(403,'请输入网站同步密钥后管理书库')
+        with LOCK:return list_trash(root)
+
+    @app.post('/api/trash/{tid}/restore')
+    def restore_converted_book(tid:str,request:Request):
+        if not hmac.compare_digest(request.headers.get('x-sync-token',''),token):raise HTTPException(403,'请输入网站同步密钥后管理书库')
+        with LOCK:
+            try:result=restore_book(root,tid)
+            except ValueError as exc:raise HTTPException(409,str(exc))
+            
+        return result
+
+    @app.delete('/api/trash/{tid}')
+    def purge_converted_book(tid:str,request:Request):
+        if not hmac.compare_digest(request.headers.get('x-sync-token',''),token):raise HTTPException(403,'请输入网站同步密钥后管理书库')
+        try:purge_book(root,tid)
+        except ValueError as exc:raise HTTPException(404,str(exc))
+        return {'ok':True}
+
     @app.get('/api/books/{bid}')
     def book(bid:str):return public_book(read_json(directory(bid)/'book.json'))
 
@@ -113,7 +145,9 @@ def create_app(data=None):
         directory(bid);block=body.get('block_id','');marks=body.get('bookmarks',[])
         if not isinstance(block,str) or len(block)>64 or not isinstance(marks,list) or len(marks)>1000 or any(not isinstance(x,str) or len(x)>64 for x in marks):
             raise HTTPException(400,'阅读进度格式错误')
-        atomic_json(root/'progress'/f'{bid}.json',dict(block_id=block,bookmarks=marks))
+        with LOCK:
+            directory(bid)
+            atomic_json(root/'progress'/f'{bid}.json',dict(block_id=block,bookmarks=marks))
         return {'ok':True}
 
     @app.get('/api/releases/latest')

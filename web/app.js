@@ -7,10 +7,10 @@ function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTi
 async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...(opts.body instanceof FormData?{}:{'Content-Type':'application/json'}),...opts.headers}});if(!r.ok){let msg;try{msg=(await r.json()).detail}catch{msg='请求失败：'+r.status}throw Error(typeof msg==='string'?msg:JSON.stringify(msg))}return r.json()}
 function safe(fn){return async(...args)=>{try{await fn(...args)}catch(e){toast(e.message)}}}
 function asset(src){return `/api/books/${book.id}/assets/${encodeURIComponent(src)}`}
-async function shelf(){if(editing&&!confirm('退出会丢失未保存的编辑，继续吗？'))return;editing=false;observer?.disconnect();book=null;$('home').hidden=false;$('reader').hidden=true;const books=await api('/api/books');$('bookCount').textContent=books.length+' 本';$('books').replaceChildren();if(!books.length)$('books').append(el('div','empty','书架还没有书。从电脑工作台转换 PDF，或导入已转换的阅读包。'));for(const b of books){const card=el('button','book');const cover=el('div','cover');if(b.cover){const img=el('img');img.src=`/api/books/${b.id}/assets/${encodeURIComponent(b.cover)}`;img.alt=b.title;img.loading='lazy';cover.append(img)}else cover.append(el('span','title-cover',b.title));card.append(cover,el('h3','',b.title),el('p','',`${b.pages} / ${b.page_count} 页 · ${b.pending?'有待核对内容':'已核对'}`));card.onclick=safe(()=>openBook(b.id));$('books').append(card)}}
-async function openBook(id,anchor){if(editing&&!confirm('放弃未保存的修改？'))return;editing=false;observer?.disconnect();book=await api('/api/books/'+id);progress=await api('/api/progress/'+id);$('home').hidden=true;$('reader').hidden=false;$('readingTitle').textContent=book.title;$('editButton').textContent='核对编辑';render();requestAnimationFrame(()=>{const target=anchor||progress.block_id;if(target)document.getElementById('b-'+target)?.scrollIntoView();else window.scrollTo(0,0)});}
+async function shelf(){if(editing&&!confirm('退出会丢失未保存的编辑，继续吗？'))return;editing=false;observer?.disconnect();book=null;$('home').hidden=false;$('reader').hidden=true;const books=await api('/api/books');$('bookCount').textContent=books.length+' 本';$('books').replaceChildren();if(!books.length)$('books').append(el('div','empty','书架还没有书。从电脑工作台转换 PDF，或导入已转换的阅读包。'));for(const b of books){const card=el('button','book');const cover=el('div','cover');if(b.cover){const img=el('img');img.src=`/api/books/${b.id}/assets/${encodeURIComponent(b.cover)}`;img.alt=b.title;img.loading='lazy';cover.append(img)}else cover.append(el('span','title-cover',b.title));card.append(cover,el('h3','',b.title),el('p','',`${b.pages} / ${b.page_count} 页 · ${b.pending?'有待核对内容':'已核对'}`));card.onclick=safe(()=>openBook(b.id));const entry=el('div','book-entry');const remove=el('button','delete-book','删除');remove.setAttribute('aria-label','删除《'+b.title+'》');remove.onclick=()=>requestBookDeletion(b);entry.append(card,remove);$('books').append(entry)}}
+async function openBook(id,anchor){if(editing&&!confirm('放弃未保存的修改？'))return;editing=false;observer?.disconnect();readingUnitIndex=0;book=await api('/api/books/'+id);progress=await api('/api/progress/'+id);$('home').hidden=true;$('reader').hidden=false;$('readingTitle').textContent=book.title;$('editButton').textContent='核对编辑';render();requestAnimationFrame(()=>{const target=anchor||progress.block_id;if(target)navigateToBlock(target,false);else window.scrollTo(0,0)});}
 function allBlocks(){return book.pages.flatMap(p=>p.blocks)}
-function anchorLink(b,label){const a=el('a','',label);a.href='#b-'+b.id;a.onclick=e=>{e.preventDefault();document.getElementById('b-'+b.id)?.scrollIntoView({behavior:'smooth'});$('toc').classList.remove('open')};return a}
+function anchorLink(b,label){const a=el('a','',label);a.href='#b-'+b.id;a.onclick=e=>{e.preventDefault();navigateToBlock(b.id);$('toc').classList.remove('open')};return a}
 function catalogFor(block){const c=block.catalog;return c&&c.text_snapshot===block.text&&Array.isArray(c.rows)?c:null}
 function catalogItem(row,sidebar=false){
  const item=el(sidebar?'div':'li',sidebar?'catalog-nav-row':'catalog-row');
@@ -143,16 +143,48 @@ const proofButton=el('button','','对照模式');proofButton.id='proofButton';pr
 proofButton.onclick=()=>{proofing=!proofing;proofButton.textContent=proofing?'返回阅读':'对照模式';proofButton.setAttribute('aria-pressed',String(proofing));render()};editionTools.append(proofButton);
 const bookmarkButton=el('button','','书签');bookmarkButton.id='readingBookmark';
 bookmarkButton.onclick=safe(async()=>{const blocks=allBlocks();const b=blocks.find(x=>x.id===progress.block_id)||blocks.find(x=>x.kind==='heading')||blocks[0];if(!b)return;const marks=new Set(progress.bookmarks||[]);marks.has(b.id)?marks.delete(b.id):marks.add(b.id);progress.bookmarks=[...marks];await persistProgress();renderToc();toast(marks.has(b.id)?'已添加当前位置书签':'已取消当前位置书签')});editionTools.append(bookmarkButton);
+let readingUnits=[],readingUnitIndex=0;
+const subsectionTitle=/^(?:制作(?:方法|过程|步骤)?|原料|主料|辅料|调料|配料|用料|步骤\s*\d*|配方\s*\d+|制作关键|使用贴士|小贴士)$/;
+function deriveReadingUnits(){
+ const units=[];let current=null;
+ for(const b of allBlocks()){
+  const text=String(b.text||'').trim();
+  const boundary=b.role!=='page_furniture'&&!catalogFor(b)&&!subsectionTitle.test(text)&&(b.role==='recipe'||b.role==='chapter'||b.kind==='heading'&&Number(b.level||2)<=2);
+  if(!current||boundary&&current.ids.length){
+   current={title:boundary?text:(units.length?'正文':'书前内容'),ids:[]};units.push(current);
+  }
+  current.ids.push(b.id);
+ }
+ return units;
+}
+function applyReadingUnit(index,savePosition=false){
+ readingUnitIndex=Math.max(0,Math.min(index,readingUnits.length-1));
+ const unit=readingUnits[readingUnitIndex],visible=new Set(unit?.ids||[]);
+ for(const n of $('content').querySelectorAll('.block'))n.hidden=!(editing||proofing||visible.has(n.dataset.block));
+ const bookTitle=$('content').querySelector(':scope>h1');if(bookTitle)bookTitle.hidden=!editing&&!proofing&&readingUnitIndex!==0;
+ const select=$('chapterSelect');if(select)select.value=String(readingUnitIndex);
+ const label=$('chapterPosition');if(label)label.textContent=`${readingUnitIndex+1} / ${readingUnits.length}`;
+ const previous=$('previousChapter'),next=$('nextChapter');if(previous)previous.disabled=readingUnitIndex===0;if(next)next.disabled=readingUnitIndex>=readingUnits.length-1;
+ if(savePosition&&unit){progress.block_id=unit.ids[0];persistProgress().catch(e=>toast(e.message));window.scrollTo({top:0,behavior:'smooth'})}
+}
+function navigateToBlock(id,smooth=true){
+ if(!editing&&!proofing){const index=readingUnits.findIndex(u=>u.ids.includes(id));if(index>=0)applyReadingUnit(index)}
+ requestAnimationFrame(()=>document.getElementById('b-'+id)?.scrollIntoView({behavior:smooth?'smooth':'instant',block:'start'}));
+}
 function buildChapterNavigation(){
- $('chapterNavigation')?.remove();if(editing)return;
- const chapters=allBlocks().filter(b=>b.role!=='page_furniture'&&!catalogFor(b)&&(b.role==='recipe'||b.role==='chapter'||b.kind==='heading'&&b.role!=='subheading'));
- if(!chapters.length)return;
+ $('chapterNavigation')?.remove();$('chapterSwitcher')?.remove();readingUnits=deriveReadingUnits();
+ if(editing||proofing){applyReadingUnit(readingUnitIndex);return}
+ if(!readingUnits.length)return;
+ const switcher=el('div','chapter-switcher');switcher.id='chapterSwitcher';
+ const label=el('label','','当前章节 ');label.htmlFor='chapterSelect';
+ const select=el('select');select.id='chapterSelect';select.setAttribute('aria-label','选择章节');
+ readingUnits.forEach((u,i)=>{const option=el('option','',`${i+1}. ${u.title}`);option.value=String(i);select.append(option)});
+ select.onchange=()=>applyReadingUnit(Number(select.value),true);switcher.append(label,select);
+ $('content').querySelector(':scope>h1').after(switcher);
  const nav=el('nav','chapter-navigation');nav.id='chapterNavigation';nav.setAttribute('aria-label','章节阅读');
- const previous=el('button','','上一节'),next=el('button','','下一节'),label=el('span');
- const current=()=>{let index=0;for(let i=0;i<chapters.length;i++){const n=document.getElementById('b-'+chapters[i].id);if(n&&n.getBoundingClientRect().top<innerHeight*.4)index=i}return index};
- const update=()=>{if(!document.getElementById('chapterNavigation'))return;const i=current();label.textContent=`${i+1} / ${chapters.length}`;previous.disabled=i===0;next.disabled=i===chapters.length-1};
- const go=delta=>{const i=Math.max(0,Math.min(chapters.length-1,current()+delta));document.getElementById('b-'+chapters[i].id)?.scrollIntoView({behavior:'smooth'});};
- previous.onclick=()=>go(-1);next.onclick=()=>go(1);nav.append(previous,label,next);$('content').append(nav);update();window.onscroll=()=>requestAnimationFrame(update);
+ const previous=el('button','','上一章'),next=el('button','','下一章'),position=el('span');previous.id='previousChapter';next.id='nextChapter';position.id='chapterPosition';
+ previous.onclick=()=>applyReadingUnit(readingUnitIndex-1,true);next.onclick=()=>applyReadingUnit(readingUnitIndex+1,true);
+ nav.append(previous,position,next);$('content').append(nav);applyReadingUnit(readingUnitIndex);
 }
 
 function connectReadingFlow(){
@@ -174,3 +206,33 @@ function connectReadingFlow(){
   previous=block;
  }
 }
+
+let managementToken='',pendingDeletion=null;
+function managementHeaders(){return config.mode==='local'?{}:{'x-sync-token':managementToken}}
+function requestBookDeletion(item){
+ pendingDeletion=item;$('deleteBookTitle').textContent=`删除《${item.title}》？`;
+ $('deleteBookHint').textContent=config.mode==='local'?'将本机转换结果移入回收站，原 PDF 保留；网站副本不会被同步删除。':'将网站阅读副本移入回收站，电脑上的原 PDF 和转换结果保留。';
+ $('deleteTokenLabel').hidden=config.mode==='local';$('deleteToken').value=managementToken;$('deleteBookError').textContent='';$('deleteBookDialog').showModal();
+}
+async function loadTrash(){
+ if(config.mode!=='local')managementToken=$('trashToken').value.trim();
+ const list=$('trashList');list.replaceChildren();
+ const items=await api('/api/trash',{headers:managementHeaders()});
+ if(!items.length)list.append(el('p','muted','回收站为空。'));
+ for(const item of items){
+  const row=el('div','trash-row');row.append(el('strong','',item.title));
+  const controls=el('div','edit-controls');
+  const restore=el('button','','恢复');restore.onclick=safe(async()=>{restore.disabled=true;try{await api(`/api/trash/${item.trash_id}/restore`,{method:'POST',headers:managementHeaders()});await loadTrash();await shelf();if(config.mode==='local')await jobs();toast('电子书和阅读进度已恢复')}finally{restore.disabled=false}});
+  const purge=el('button','danger-link','彻底删除');purge.onclick=safe(async()=>{if(!confirm(`彻底删除《${item.title}》的转换结果？此操作无法撤销，原 PDF 不受影响。`))return;await api(`/api/trash/${item.trash_id}`,{method:'DELETE',headers:managementHeaders()});await loadTrash()});
+  controls.append(restore,purge);row.append(controls);list.append(row);
+ }
+}
+const deleteDialog=el('dialog');deleteDialog.id='deleteBookDialog';
+deleteDialog.innerHTML='<h2 id="deleteBookTitle"></h2><p id="deleteBookHint" class="muted"></p><label id="deleteTokenLabel">网站同步密钥<input id="deleteToken" type="password" autocomplete="off"></label><p id="deleteBookError" role="alert"></p><div class="dialog-actions"><button id="cancelDeleteBook">取消</button><button id="confirmDeleteBook" class="primary">移入回收站</button></div>';
+document.body.append(deleteDialog);$('cancelDeleteBook').onclick=()=>deleteDialog.close();
+$('confirmDeleteBook').onclick=async()=>{const button=$('confirmDeleteBook');button.disabled=true;try{if(config.mode!=='local')managementToken=$('deleteToken').value.trim();const item=pendingDeletion;await api('/api/books/'+item.id,{method:'DELETE',headers:managementHeaders()});deleteDialog.close();$('deleteToken').value='';pendingDeletion=null;await shelf();if(config.mode==='local')await jobs();toast('已移入回收站，原 PDF 保留')}catch(e){$('deleteBookError').textContent=e.message}finally{button.disabled=false}};
+const trashDialog=el('dialog');trashDialog.id='trashDialog';trashDialog.innerHTML='<h2>回收站</h2><p class="muted">可以恢复已删除的电子书、阅读进度和书签。</p><label id="trashTokenLabel">网站同步密钥<input id="trashToken" type="password" autocomplete="off"></label><button id="loadTrash">查看回收站</button><div id="trashList"></div><div class="dialog-actions"><button id="closeTrash">关闭</button></div>';document.body.append(trashDialog);
+$('loadTrash').onclick=safe(loadTrash);$('closeTrash').onclick=()=>{trashDialog.close();$('trashToken').value=''};
+const trashButton=el('button','','回收站');trashButton.id='trashButton';
+trashButton.onclick=safe(async()=>{$('trashTokenLabel').hidden=config.mode==='local';$('trashToken').value=managementToken;$('trashList').replaceChildren();trashDialog.showModal();if(config.mode==='local'||managementToken)await loadTrash()});
+$('importButton').parentElement.append(trashButton);

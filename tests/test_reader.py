@@ -56,7 +56,7 @@ class ReaderTests(unittest.TestCase):
         manifest=self.client.get('/api/releases/latest')
         self.assertEqual(manifest.status_code,200)
         self.assertEqual(manifest.headers['cache-control'],'no-store')
-        info=manifest.json();self.assertEqual(info['version'],'0.3.1')
+        info=manifest.json();self.assertEqual(info['version'],'0.4.0')
         archive=self.client.get('/api/releases/'+info['url'])
         self.assertEqual(archive.status_code,200)
         self.assertEqual(hashlib.sha256(archive.content).hexdigest(),info['sha256'])
@@ -64,6 +64,25 @@ class ReaderTests(unittest.TestCase):
             self.assertTrue({'app.py','engine.py','desktop.py','launcher.py','version.json','web/app.js'}.issubset(z.namelist()))
             self.assertFalse(any(n.startswith(('data/','runtime/')) or n.lower().endswith('.pdf') for n in z.namelist()))
         self.assertEqual(self.client.get('/api/releases/anything.txt').status_code,404)
+
+    def test_delete_requires_key_and_preserves_reader_progress_on_restore(self):
+        self.upload();self.client.put('/api/progress/'+BID,json={'block_id':'title','bookmarks':['title']})
+        self.assertEqual(self.client.delete('/api/books/'+BID).status_code,403)
+        headers={'x-sync-token':TOKEN}
+        deleted=self.client.delete('/api/books/'+BID,headers=headers);self.assertEqual(deleted.status_code,200,deleted.text)
+        tid=deleted.json()['trash_id'];self.assertEqual(self.client.get('/api/books/'+BID).status_code,404)
+        self.assertEqual(self.client.get('/api/trash').status_code,403)
+        self.assertEqual(len(self.client.get('/api/trash',headers=headers).json()),1)
+        self.assertEqual(self.client.post('/api/trash/'+tid+'/restore',headers=headers).status_code,200)
+        self.assertEqual(self.client.get('/api/progress/'+BID).json()['bookmarks'],['title'])
+        tid=self.client.delete('/api/books/'+BID,headers=headers).json()['trash_id']
+        self.assertEqual(self.client.delete('/api/trash/'+tid,headers=headers).status_code,200)
+        self.assertEqual(self.client.get('/api/trash',headers=headers).json(),[])
+
+    def test_delete_rejects_cross_origin_even_with_key(self):
+        self.upload()
+        self.assertEqual(self.client.delete('/api/books/'+BID,headers={'x-sync-token':TOKEN,'origin':'https://untrusted.invalid'}).status_code,403)
+        self.assertEqual(len(self.client.get('/api/books').json()),1)
 
     def test_health_and_role(self):
         self.assertEqual(self.client.get('/health').json()['revision'],'test-revision')

@@ -108,3 +108,74 @@ def import_book(archive, root):
             atomic_json(staging/'book.json',book)
             os.replace(staging,target)
     return book
+
+
+def trash_book(root, bid):
+    """Move only a converted book and its reading progress. Never follow source paths."""
+    import uuid
+    from datetime import datetime, timezone
+    root=Path(root)
+    if not ID.fullmatch(bid):raise ValueError('书籍编号无效')
+    with LOCK:
+        source=root/'books'/bid
+        if source.is_symlink() or not(source/'book.json').is_file():raise ValueError('书籍不存在')
+        book=read_json(source/'book.json')
+        if book.get('id')!=bid:raise ValueError('书籍编号不匹配')
+        trash=root/'trash'
+        if trash.is_symlink():raise ValueError('回收站目录无效')
+        trash.mkdir(exist_ok=True)
+        tid=uuid.uuid4().hex;target=trash/tid
+        progress=root/'progress'/f'{bid}.json'
+        if progress.is_symlink():raise ValueError('阅读进度路径无效')
+        info=dict(trash_id=tid,id=bid,title=book['title'],deleted_at=datetime.now(timezone.utc).isoformat())
+        os.replace(source,target)
+        try:
+            if progress.exists():os.replace(progress,target/'.reading-progress.json')
+            atomic_json(target/'.deleted.json',info)
+        except BaseException:
+            if (target/'.reading-progress.json').exists():
+                progress.parent.mkdir(exist_ok=True);os.replace(target/'.reading-progress.json',progress)
+            os.replace(target,source)
+            raise
+        return info
+
+
+def trash_directory(root, tid):
+    if not re.fullmatch(r'[a-f0-9]{32}',tid):raise ValueError('回收站编号无效')
+    root=Path(root);path=root/'trash'/tid
+    if (root/'trash').is_symlink() or path.is_symlink() or not(path/'book.json').is_file():raise ValueError('回收站条目不存在')
+    return path
+
+
+def list_trash(root):
+    result=[]
+    for path in (Path(root)/'trash').glob('*/.deleted.json'):
+        if path.parent.is_symlink():continue
+        info=read_json(path)
+        result.append({k:info[k] for k in ('trash_id','id','title','deleted_at')})
+    return sorted(result,key=lambda x:x['deleted_at'],reverse=True)
+
+
+def restore_book(root, tid):
+    root=Path(root)
+    with LOCK:
+        source=trash_directory(root,tid);book=read_json(source/'book.json');bid=book['id']
+        if not ID.fullmatch(bid):raise ValueError('书籍编号无效')
+        target=root/'books'/bid
+        if target.exists() or target.is_symlink():raise ValueError('书库已有同一本书，不能覆盖；请先处理现有版本')
+        progress=root/'progress'/f'{bid}.json'
+        if progress.exists() or progress.is_symlink():raise ValueError('已有同书阅读进度，不能覆盖')
+        os.replace(source,target)
+        try:
+            saved=target/'.reading-progress.json'
+            if saved.exists():
+                progress.parent.mkdir(exist_ok=True);os.replace(saved,progress)
+            (target/'.deleted.json').unlink(missing_ok=True)
+        except BaseException:
+            if progress.exists():os.replace(progress,target/'.reading-progress.json')
+            os.replace(target,source);raise
+        return {'id':bid,'title':book['title']}
+
+
+def purge_book(root, tid):
+    with LOCK:shutil.rmtree(trash_directory(root,tid))
