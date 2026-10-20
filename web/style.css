@@ -52,3 +52,5 @@ body>header{position:fixed;inset:0 0 auto;z-index:10;height:auto;min-height:90px
 #tasks{scroll-margin-top:calc(var(--app-menu-height) + 20px)}
 @media(min-width:761px){.reading-layout #toc,#comparison{top:calc(var(--reader-menu-height) + 18px);max-height:calc(100dvh - var(--reader-menu-height) - 36px)}}
 @media(max-width:760px){body>header{min-height:73px;padding:10px 18px;flex-wrap:wrap;gap:8px}body>header nav{flex-wrap:wrap;justify-content:flex-end;gap:2px}.book-edition .block{scroll-margin-top:calc(var(--reader-menu-height) + 20px)}}
+
+#aiDialog{max-height:92dvh;overflow:auto;width:min(700px,94vw)}#aiDialog h3{font-size:16px}.ai-consent{display:flex;align-items:flex-start;gap:8px;line-height:1.7}.ai-consent input{width:auto;margin:5px 0 0;flex-shrink:0}.ai-trial{border-top:1px solid var(--line);padding:14px 0}#aiError{color:#a64432;font-size:13px}

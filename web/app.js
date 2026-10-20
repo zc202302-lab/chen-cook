@@ -373,3 +373,46 @@ const menuResizeObserver=new ResizeObserver(measureMenus);
 menuResizeObserver.observe(document.querySelector('body>header'));
 menuResizeObserver.observe(document.querySelector('.readerbar'));
 measureMenus();
+
+// Cloud layout trials are available only on the local conversion workbench.
+const aiDialog=el('dialog');aiDialog.id='aiDialog';
+aiDialog.innerHTML='<h2>AI 图文结构试转</h2><p class="muted">让视觉 AI 判断标题、阅读顺序和图片归属。文字由程序按 OCR 编号取回，不让 AI 改写。结果另存，不覆盖当前书。</p><label>百炼 Base URL<input id="aiEndpoint" placeholder="从百炼控制台复制，以 /compatible-mode/v1 结尾" autocomplete="off"></label><p class="muted"><a href="https://help.aliyun.com/zh/model-studio/get-api-key" target="_blank" rel="noopener noreferrer">获取百炼 API Key 与对应地域接口地址</a> · 模型 qwen3-vl-plus</p><label>API Key<input id="aiKey" type="password" autocomplete="off" placeholder="仅在本次程序内存中使用，关闭后需重新填写"></label><div class="edit-controls"><button id="aiSaveSettings">保存接口设置</button><button id="aiClearKey">清除密钥</button></div><p id="aiSettingsStatus" class="muted"></p><label>试转 PDF 页码（最多 20 页）<input id="aiPages" placeholder="例如 3-12 或 3,6-10"></label><p class="muted">先本地转换所选页，再进行 AI 试转。每页一次请求，不自动重试。费用按实际 Token 收取；下方按北京地域公开价格估算，最终以服务商账单为准。第一阶段不纠正 OCR 错字、不重新裁图。</p><label class="ai-consent"><input id="aiConsent" type="checkbox"> 将所选页的整页图像、OCR 文字和图片位置发送给阿里云百炼处理，并接受接口计费。</label><div class="dialog-actions"><button id="closeAi">关闭</button><button id="startAi" class="primary">开始试转并另存</button></div><p id="aiError" role="alert"></p><h3>试转进度</h3><div id="aiTrialList"></div>';
+document.body.append(aiDialog);
+let aiPollTimer,aiBookId,aiRevision;
+async function refreshAiTrials(){
+ const trials=await api('/api/ai/trials');const list=$('aiTrialList');list.replaceChildren();
+ if(!trials.length)list.append(el('p','muted','尚未试转。建议先选择 10 页，对比效果后再决定是否扩大。'));
+ const labels={running:'处理中',stopping:'正在停止',paused:'已暂停',failed:'已停止 · 需检查',done:'已完成'};
+ for(const trial of trials){
+  const row=el('div','ai-trial');row.append(el('strong','',trial.title),el('p','muted',`${labels[trial.status]||trial.status} · ${trial.done.length} / ${trial.pages.length} 页 · ${trial.usage_unavailable?'部分调用用量未返回，费用待核对':'参考费用 ¥'+Number(trial.estimated_yuan||0).toFixed(4)} · 输入 ${trial.prompt_tokens||0} / 输出 ${trial.completion_tokens||0} Token`),el('p','muted',trial.message));
+  const controls=el('div','edit-controls');
+  if(trial.status==='running'){const stop=el('button','','停止');stop.onclick=safe(async()=>{await api(`/api/ai/trials/${trial.id}/stop`,{method:'POST'});await refreshAiTrials()});controls.append(stop)}
+  if(['paused','failed'].includes(trial.status)){const resume=el('button','','继续未完成页');resume.onclick=safe(async()=>{resume.disabled=true;try{await api(`/api/ai/trials/${trial.id}/resume`,{method:'POST'});await refreshAiTrials()}finally{resume.disabled=false}});controls.append(resume)}
+  if(trial.done.length){const read=el('button','','打开另存结果');read.onclick=safe(async()=>{aiDialog.close();await openBook(trial.result_id)});controls.append(read)}
+  row.append(controls);list.append(row);
+ }
+}
+async function openAiTrial(){
+ if(editing){toast('请先保存并结束编辑');return}
+ aiBookId=book.id;aiRevision=book.revision;
+ const settings=await api('/api/ai/settings');$('aiEndpoint').value=settings.endpoint;$('aiKey').value='';$('aiConsent').checked=false;
+ $('aiSettingsStatus').textContent=settings.configured?'本次程序已设置密钥；留空沿用。':'尚未设置密钥。密钥不会写入书籍、同步到网站或保存在磁盘。';
+ $('aiPages').value=book.pages.slice(0,10).map(p=>p.page).join(',');$('aiError').textContent='';
+ await refreshAiTrials();aiDialog.showModal();clearInterval(aiPollTimer);aiPollTimer=setInterval(()=>refreshAiTrials().catch(e=>$('aiError').textContent=e.message),3000);
+}
+$('closeAi').onclick=()=>aiDialog.close();aiDialog.addEventListener('close',()=>{clearInterval(aiPollTimer);$('aiKey').value=''});
+async function saveAiSettings(clear=false){
+ const result=await api('/api/ai/settings',{method:'PUT',body:JSON.stringify({endpoint:$('aiEndpoint').value.trim(),api_key:clear?'':$('aiKey').value.trim(),clear_key:clear})});$('aiKey').value='';
+ $('aiSettingsStatus').textContent=result.configured?'密钥已存入当前程序内存，关闭程序后清除。':'密钥已清除。';
+}
+$('aiSaveSettings').onclick=safe(()=>saveAiSettings());$('aiClearKey').onclick=safe(()=>saveAiSettings(true));
+$('startAi').onclick=async()=>{
+ const button=$('startAi');button.disabled=true;$('aiError').textContent='';
+ try{
+  if(!$('aiConsent').checked)throw Error('请先勾选页面发送与计费说明。');
+  await saveAiSettings();
+  await api(`/api/books/${aiBookId}/ai-trial`,{method:'POST',body:JSON.stringify({pages:$('aiPages').value,revision:aiRevision,consent:true})});
+  await refreshAiTrials();toast('试转已开始，结果会另存；可关闭窗口，稍后回来查看。');
+ }catch(e){$('aiError').textContent=e.message}finally{button.disabled=false}
+};
+const aiButton=el('button','','AI 图文试转');aiButton.id='aiTrialButton';aiButton.onclick=safe(openAiTrial);$('localActions').prepend(aiButton);

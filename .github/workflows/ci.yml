@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt playwright
+      - run: pip install -r requirements.txt playwright PyMuPDF
       - run: python -m compileall -q app.py server.py storage.py scripts tests
       - run: node --check web/app.js
       - run: node tests/test_readability.js
