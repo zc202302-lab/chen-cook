@@ -1,5 +1,5 @@
 [Unit]
-Description=Chen Cook reading website
+Description=Chen Cook original PDF library
 After=network-online.target
 Wants=network-online.target
 [Service]

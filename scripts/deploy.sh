@@ -30,7 +30,7 @@ rollback() {
 trap rollback ERR
 git merge --ff-only "$target"
 .venv/bin/pip install -q -r requirements.txt
-.venv/bin/python -m compileall -q app.py server.py storage.py scripts
+.venv/bin/python -m compileall -q app.py server.py catalogue.py scripts
 install -d -o chencook -g chencook -m 0700 /var/lib/chen-cook/reader
 install -m 0644 deploy/chen-cook.service /etc/systemd/system/chen-cook.service
 printf 'COOK_REVISION=%s\n' "$target" > /etc/chen-cook/revision.env

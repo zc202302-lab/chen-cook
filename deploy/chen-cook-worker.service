@@ -1,6 +1,0 @@
-[Unit]
-Description=Chen Cook legacy updater migration placeholder (no PDF processing)
-[Service]
-Type=oneshot
-ExecStart=/bin/true
-RemainAfterExit=true

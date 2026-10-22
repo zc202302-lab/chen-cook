@@ -1,6 +1,6 @@
-# Chen Cook 阅读端
+# Chen Cook 原文资料库
 
-本仓库部署 cook.ziboxiaozhushou.cn。2026-10-22 用户将方向改为原PDF烹饪资料库，并授权参考东方美食网站重建。首页为新资料库；/legacy 保留旧转换书库。原PDF允许上传至用户服务器，但绝不提交仓库。新内容位于 COOK_READER_DATA/original-library，与旧书籍数据隔离；暂不实现AI总结及读者账号。
+本仓库部署 cook.ziboxiaozhushou.cn。2026-10-22 用户将方向改为原PDF烹饪资料库，并授权参考东方美食网站重建，随后明确要求删除原来的全部程序。当前只保留新资料库，旧转换器、阅读器、接口、发布包和/legacy均删除。原PDF允许上传至用户服务器，但绝不提交仓库。新内容位于 COOK_READER_DATA/original-library；暂不实现AI总结及读者账号。删除源码不等于删除生产书刊数据。
 
 开始工作先读 docs/AI_HANDOFF.md。不要提交原PDF、真实书刊、密钥、数据库或生产目录。API写入保留同源检查；上传使用同步密钥；按用户要求暂不开发读者账号。
 

@@ -89,5 +89,24 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(r['items'][0]['start'],2)
         self.assertEqual(r['items'][0]['kind'],'manual')
 
+    def test_service_only_exposes_new_library_and_preserves_existing_data(self):
+        from pathlib import Path
+        sentinel=Path(self.temp.name)/'books'/'existing'/'book.json'
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text('{"sentinel":"keep"}')
+        homepage=self.client.get('/')
+        self.assertEqual(homepage.status_code,200)
+        self.assertIn('/library/library.js',homepage.text)
+        self.assertNotIn('/legacy',homepage.text)
+        self.assertEqual(self.client.get('/library/library.js').status_code,200)
+        for path in ('/legacy','/app.js','/style.css','/api/config','/api/books',
+                     '/api/trash','/api/search','/api/progress/old','/api/releases/latest'):
+            self.assertEqual(self.client.get(path).status_code,404,path)
+        self.assertEqual(self.client.post('/api/import').status_code,404)
+        with TestClient(create_app(self.temp.name)) as restarted:
+            self.assertEqual(restarted.get('/health').json()['library'],True)
+            self.assertEqual(restarted.get('/api/library/books').json(),[])
+        self.assertEqual(sentinel.read_text(),'{"sentinel":"keep"}')
+
 
 if __name__=='__main__':unittest.main()
