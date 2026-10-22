@@ -19,13 +19,15 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt playwright PyMuPDF
-      - run: python -m compileall -q app.py server.py storage.py scripts tests
+      - run: python -m compileall -q app.py server.py storage.py catalogue.py scripts tests
       - run: node --check web/app.js
+      - run: node --check web/library/library.js
       - run: node tests/test_readability.js
       - run: bash -n scripts/deploy.sh
       - run: python -m unittest discover -s tests -p 'test_*.py' -v
       - run: python -m playwright install --with-deps chromium webkit
       - run: python tests/browser_acceptance.py
+      - run: python tests/library_browser_acceptance.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

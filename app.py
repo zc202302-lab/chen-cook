@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from catalogue import mount_catalogue
 from storage import ASSET, ID, LOCK, atomic_json, import_book, public_book, read_json, trash_book, list_trash, restore_book, purge_book
 
 
@@ -52,7 +53,7 @@ def create_app(data=None):
         return result
 
     @app.get('/health')
-    def health():return dict(ok=True,service='chen-cook',mode='reader',version=version,revision=revision)
+    def health():return dict(ok=True,service='chen-cook',mode='reader',library=True,version=version,revision=revision)
 
     @app.get('/api/config')
     def config():return dict(mode='server',version=version,desktop=False,revision=revision)
@@ -167,6 +168,16 @@ def create_app(data=None):
         if not path.is_file():path=root/'releases'/name
         if not path.is_file():raise HTTPException(404)
         return FileResponse(path)
+
+    mount_catalogue(app,root,token)
+
+    @app.get('/')
+    def library_home():
+        return FileResponse(Path(__file__).parent/'web'/'library'/'index.html',headers={'Cache-Control':'no-cache'})
+
+    @app.get('/legacy')
+    def legacy_reader():
+        return FileResponse(Path(__file__).parent/'web'/'index.html',headers={'Cache-Control':'no-cache'})
 
     app.mount('/',StaticFiles(directory=Path(__file__).parent/'web',html=True),name='web')
     return app

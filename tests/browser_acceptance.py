@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory() as tmp:
                             client.put('/api/progress/'+bid,json={'block_id':'','bookmarks':[]}).raise_for_status()
                         context=browser.new_context(viewport={'width':width,'height':900})
                         page=context.new_page()
-                        page.goto(base)
+                        page.goto(base+'/legacy')
                         expect(page.locator('.book')).to_have_count(1)
                         for button in ('addButton','tasksNav','editButton','updateButton','quitButton'):
                             expect(page.locator('#'+button)).to_be_hidden()

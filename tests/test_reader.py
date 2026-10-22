@@ -86,7 +86,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(len(self.client.get('/api/books').json()),1)
 
     def test_reader_assets_revalidate_after_upgrade(self):
-        response=self.client.get('/')
+        response=self.client.get('/legacy')
         self.assertEqual(response.headers['cache-control'],'no-cache')
         self.assertIn('/app.js?v=0.6.1',response.text)
         for path in ('/app.js?v=0.6.1','/style.css?v=0.6.1'):
