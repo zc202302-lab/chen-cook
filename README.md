@@ -1,22 +1,24 @@
-# 灶间书房 · Chen Cook 阅读端
+# 灶间书房 · 烹饪原文资料库
 
 部署域名：https://cook.ziboxiaozhushou.cn
 
-本仓库只负责服务器书库、全文搜索、图文阅读、可点击目录、阅读进度和书签。原PDF的批量识别、修正与图片裁切在独立桌面端完成。桌面端上传转换包，服务器不接收或处理原PDF，不安装OCR模型，不运行PDF worker。
+首页提供原PDF资料库：批量上传、分类与年份筛选、封面书架、中文关键词搜索、目录与命中页跳转、手机和电脑原页阅读。界面参考东方美食的公开信息结构，独立实现；内容由用户提供。暂不生成AI总结。
+
+已有转换结果保留在 `/legacy`，原接口及桌面更新发布包保持兼容。新PDF资料与旧转换结果分开保存。扫描件OCR、语义检索、无内嵌目录的自动文章划分尚未实现，详见 [实现范围](docs/ORIGINAL_LIBRARY.md)。
 
 ## 现有服务器升级
 
 沿用 `/opt/chen-cook`、`chen-cook.service`、`172.19.0.1:8020` 和现有Caddy配置。CI通过的main由已经安装的timer自动部署。`/health`返回service、mode、version、revision，用于确认真正上线的提交。
 
-新书库位于 `/var/lib/chen-cook/reader`。旧目录下的SQLite、预览及OSS配置不删除，也不自动导入到新阅读库。旧数据与桌面转换结果属于不同格式，请从桌面上传转换后的书籍。
+新原文资料库位于 `/var/lib/chen-cook/reader/original-library`，保存原PDF及独立SQLite索引。旧目录和旧转换结果均不删除。原PDF不得提交GitHub。
 
-旧部署器首次切换时仍会安装worker单元，因此提供一个不做任何处理的兼容占位；下一次timer检查完成迁移后停止并禁用该单元。仓库中已无旧OSS、登录、PDF识别与处理代码。部署不修改Caddy、其他站点、小助手或其他端口。
+旧worker保持禁用，文字索引在阅读服务内串行处理。部署不修改Caddy、其他站点、小助手或其他端口。
 
-## 桌面上传
+## 上传与管理
 
-桌面端网站地址填写 `https://cook.ziboxiaozhushou.cn`。同步密钥在新站首次启动时自动生成，仅保存在服务器 `/var/lib/chen-cook/reader/sync-token`，权限0600，不会写进日志或网页。管理员可在服务器终端读取并填入桌面端，勿发到公开聊天或仓库。也可在 `/etc/chen-cook/reader.env` 设置 `COOK_SYNC_TOKEN` 后重启服务。
+网站点击“管理书库”，填写现有同步密钥，即可批量选择PDF。同步密钥仅保存在服务器 `/var/lib/chen-cook/reader/sync-token`，权限0600，不写进日志或网页。管理员在自己的服务器终端读取，勿发到公开聊天或仓库。也可通过 `/etc/chen-cook/reader.env` 设置 `COOK_SYNC_TOKEN` 后重启服务。
 
-支持ZIP转换包（最大1GB）；不接受PDF、越界路径或重复书籍覆盖。网站暂不开发读者账号；上传有同步密钥保护，网页写入有同源检查。
+新资料库单个PDF上限2GB，SHA256检测完全重复文件，删除进入可恢复的回收站。已有文字与内嵌目录自动提取；没有目录时按页检索，可编辑文章起止页。扫描件标记待OCR。旧版 `/api/import` 仍支持ZIP转换包（最大1GB）。网站暂不开发读者账号；写操作有同步密钥及同源检查。
 
 ## 本地验证
 
@@ -27,4 +29,4 @@ python -m venv .venv
 COOK_READER_DATA=./data .venv/bin/uvicorn server:app --host 127.0.0.1 --port 8765
 ```
 
-浏览器验收：`python -m playwright install chromium webkit` 后运行 `python tests/browser_acceptance.py`。只用合成书籍，覆盖320/390/768/1440四种尺寸，不上传私人书刊。
+浏览器验收：安装Chromium/WebKit后运行 `python tests/browser_acceptance.py` 和 `python tests/library_browser_acceptance.py`。只用合成书籍，不上传私人书刊。
